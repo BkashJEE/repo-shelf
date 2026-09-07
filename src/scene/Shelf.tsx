@@ -19,7 +19,6 @@ export function ShelfRow({ shelf, row, repos }: Props) {
   const dragOver = useShelf((s) => s.drag?.overShelfId === shelf.id);
   const dragging = useShelf((s) => s.drag !== null);
   const offset = useShelf((s) => s.rowOffsets[shelf.id] ?? 0);
-  const setRowOffset = useShelf((s) => s.setRowOffset);
   const overflow = Math.max(0, totalWidth - USABLE_W);
   const startX = -SHELF_W / 2 + SIDE_PAD - Math.min(offset, overflow);
   const theme = useShelf((s) => themeById(s.themeId));
@@ -30,9 +29,7 @@ export function ShelfRow({ shelf, row, repos }: Props) {
   const rowTop = plankY + ROW_H - PLANK_T;
   const rowMidY = (plankY + rowTop) / 2;
 
-  const canLeft = offset > 0;
-  const canRight = offset < overflow - 0.01;
-  const step = USABLE_W * 0.6;
+  const clipRow = overflow > 0;
 
   return (
     <group>
@@ -75,6 +72,7 @@ export function ShelfRow({ shelf, row, repos }: Props) {
           width={slot.width}
           height={slot.height}
           plankY={plankY}
+          clip={clipRow}
         />
       ))}
 
@@ -83,21 +81,6 @@ export function ShelfRow({ shelf, row, repos }: Props) {
           Shelf {String(row + 1).padStart(2, '0')} · {shelf.label} · {repos.length} {repos.length === 1 ? (shelf.kind === 'links' ? 'link' : 'repo') : shelf.kind === 'links' ? 'links' : 'repos'}
         </div>
       </Html>
-
-      {overflow > 0 && (
-        <>
-          <Html position={[-SHELF_W / 2 + 0.05, rowMidY, BOOK_DEPTH / 2]} center zIndexRange={[12, 2]}>
-            <button className="row-arrow" disabled={!canLeft} onClick={() => setRowOffset(shelf.id, Math.max(0, offset - step))} aria-label="Scroll shelf left">
-              ‹
-            </button>
-          </Html>
-          <Html position={[SHELF_W / 2 - 0.05, rowMidY, BOOK_DEPTH / 2]} center zIndexRange={[12, 2]}>
-            <button className="row-arrow" disabled={!canRight} onClick={() => setRowOffset(shelf.id, Math.min(overflow, offset + step))} aria-label="Scroll shelf right">
-              ›
-            </button>
-          </Html>
-        </>
-      )}
     </group>
   );
 }

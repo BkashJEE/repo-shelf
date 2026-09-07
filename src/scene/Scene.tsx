@@ -15,6 +15,10 @@ export function Scene() {
       shadows
       camera={{ fov: 44, near: 0.1, far: 100, position: [0, 0, 12] }}
       gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+      onCreated={({ gl }) => {
+        // Object-level material clippingPlanes (long rows clipped at the shelf ends) need this flag.
+        gl.localClippingEnabled = true;
+      }}
       onPointerMissed={(e) => {
         const el = e.target as HTMLElement | null;
         if (el?.dataset?.orbited) {

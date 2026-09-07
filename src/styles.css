@@ -353,20 +353,57 @@ code {
   border: 2px solid #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
-.row-arrow {
+
+/* Side pan arrows (‹ ›) — fixed overlay so they never clip at the viewport */
+.pan-arrows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+.pan-arrow {
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   font-family: var(--sans);
-  width: 28px;
-  height: 44px;
-  border-radius: 6px;
+  width: 34px;
+  height: 54px;
+  border-radius: 8px;
   border: 1px solid rgba(255, 230, 190, 0.3);
   background: rgba(30, 18, 10, 0.75);
   color: #f3e6d0;
-  font-size: 22px;
+  font-size: 26px;
   line-height: 1;
   backdrop-filter: blur(4px);
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
-.row-arrow:hover:not(:disabled) {
+.pan-left {
+  left: 10px;
+}
+.pan-right {
+  right: 10px;
+}
+.pan-arrow:hover:not(:disabled) {
   background: rgba(60, 38, 20, 0.9);
+}
+.pan-arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+@media (max-width: 640px) {
+  .pan-arrow {
+    width: 30px;
+    height: 46px;
+    font-size: 22px;
+  }
+  .pan-left {
+    left: 6px;
+  }
+  .pan-right {
+    right: 6px;
+  }
 }
 
 /* Detail panel: an open book page in its own pane beside the shelf */

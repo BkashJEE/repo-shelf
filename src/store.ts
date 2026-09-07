@@ -3,6 +3,7 @@ import type { AppState, Repo, Shelf } from './types';
 import { api, ApiError, subscribeEvents } from './api';
 import { matches, type Filter } from './derive';
 import { applyThemeCss, loadThemeId, saveThemeId, themeById } from './themes';
+import { panOffset, rowOverflow } from './scene/layout';
 
 export type DialogKind = 'move' | 'rename' | 'mkdir' | 'shelves' | 'clone';
 
@@ -82,6 +83,7 @@ export interface ShelfState {
   dismissToast: (id: number) => void;
   setScrollRow: (row: number) => void;
   setRowOffset: (shelfId: string, offset: number) => void;
+  panRow: (dir: 1 | -1) => void;
   setZoom: (z: number) => void;
   setOrbit: (yaw: number, pitch: number) => void;
   setFocus: (f: { x: number; y: number } | null) => void;
@@ -199,6 +201,16 @@ export const useShelf = create<ShelfState>()((set, get) => ({
     set({ scrollRow: Math.min(max, Math.max(0, row)) });
   },
   setRowOffset: (shelfId, offset) => set((st) => ({ rowOffsets: { ...st.rowOffsets, [shelfId]: offset } })),
+  panRow(dir) {
+    const st = get();
+    const shelf = st.shelves[st.scrollRow];
+    if (!shelf) return;
+    const repos = st.repos.filter((r) => r.shelfId === shelf.id);
+    const overflow = rowOverflow(repos);
+    if (overflow <= 0) return;
+    const next = panOffset(st.rowOffsets[shelf.id] ?? 0, dir, overflow);
+    if (next !== (st.rowOffsets[shelf.id] ?? 0)) st.setRowOffset(shelf.id, next);
+  },
   setBusy: (busy) => set({ busy }),
   setZoom: (z) => set({ zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z)) }),
   setOrbit: (yaw, pitch) => set({ orbit: { yaw, pitch } }),
