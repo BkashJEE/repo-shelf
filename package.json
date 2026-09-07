@@ -1,0 +1,67 @@
+{
+  "name": "repo-shelf",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Your git repos as books on a 3D bookshelf. Browse, search, move, rename, open.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BkashJEE/repo-shelf.git"
+  },
+  "homepage": "https://github.com/BkashJEE/repo-shelf#readme",
+  "bugs": {
+    "url": "https://github.com/BkashJEE/repo-shelf/issues"
+  },
+  "keywords": [
+    "git",
+    "repositories",
+    "bookshelf",
+    "3d",
+    "three.js",
+    "react-three-fiber",
+    "developer-tools",
+    "visualization"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:web": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "start": "cross-env NODE_ENV=production tsx server/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "express": "^5.2.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "three": "^0.185.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@types/three": "^0.185.4",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

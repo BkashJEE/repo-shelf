@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.cache/
+*.log
+shelf.config.json
+test-results/
+playwright-report/
+.env
+.DS_Store
+Thumbs.db
