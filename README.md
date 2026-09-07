@@ -1,5 +1,7 @@
 # repo shelf.
 
+[![CI](https://github.com/BkashJEE/repo-shelf/actions/workflows/ci.yml/badge.svg)](https://github.com/BkashJEE/repo-shelf/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 Your git repos as books on a 3D bookshelf. Every root folder you configure is a shelf, every git repo inside it is a book. Hover to browse, click to open, zoom and orbit the case, drag a book to another shelf to move the repo on disk.
 
 Built with React Three Fiber, Express, and `gh`. Runs on your machine only. Windows, macOS and Linux.
