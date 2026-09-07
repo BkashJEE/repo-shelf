@@ -7,6 +7,7 @@ import { DetailPanel } from './ui/DetailPanel';
 import { Dialogs } from './ui/Dialogs';
 import { Toasts } from './ui/Toasts';
 import { ViewControls } from './ui/ViewControls';
+import { PanArrows } from './ui/PanArrows';
 
 export function App() {
   const loaded = useShelf((s) => s.loaded);
@@ -57,6 +58,7 @@ export function App() {
         ) : (
           <div className="scene-wrap">
             <Scene />
+            <PanArrows />
             <ViewControls />
           </div>
         )}

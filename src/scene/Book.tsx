@@ -6,7 +6,7 @@ import type { Repo } from '../types';
 import { useShelf } from '../store';
 import { displayName, matches, relativeTime } from '../derive';
 import { bookTextures, pageEdgeTexture, sideColor } from './textures';
-import { BOOK_DEPTH, rowAtY } from './layout';
+import { BOOK_DEPTH, CLIP_X, rowAtY } from './layout';
 
 interface Props {
   repo: Repo;
@@ -15,13 +15,26 @@ interface Props {
   width: number;
   height: number;
   plankY: number;
+  /** When true (row overflows the shelf), the book is clipped at the shelf ends. */
+  clip?: boolean;
 }
 
 const tmpV = new THREE.Vector3();
 const tmpDir = new THREE.Vector3();
 const DRAG_PLANE_Z = 2.4;
 
-export function Book({ repo, x, y, width, height, plankY }: Props) {
+/**
+ * World-space planes that hide any part of a book that sticks out past the
+ * shelf ends. Defined once: three.js applies material clipping planes in
+ * world space (the renderer must have `localClippingEnabled` set, see
+ * Scene.tsx).
+ */
+const SHELF_END_PLANES = [
+  new THREE.Plane(new THREE.Vector3(-1, 0, 0), CLIP_X),
+  new THREE.Plane(new THREE.Vector3(1, 0, 0), CLIP_X),
+];
+
+export function Book({ repo, x, y, width, height, plankY, clip = false }: Props) {
   const group = useRef<THREE.Group>(null);
   const [mats, setMats] = useState<THREE.MeshStandardMaterial[] | null>(null);
   const { camera, invalidate } = useThree();
@@ -61,6 +74,20 @@ export function Book({ repo, x, y, width, height, plankY }: Props) {
     invalidate();
     return () => list.forEach((m) => m.dispose());
   }, [repo, staleDays, invalidate]);
+
+  // Keep long rows inside the shelf: clip at the frame ends, except while the
+  // book is being dragged or swung open (selected), when it legitimately
+  // leaves the row plane. Toggling the planes changes the shader (clipping
+  // defines), so each material needs a recompile.
+  const clipRow = clip && !dragging && !selected;
+  useEffect(() => {
+    if (!mats) return;
+    for (const m of mats) {
+      m.clippingPlanes = clipRow ? SHELF_END_PLANES : null;
+      m.needsUpdate = true;
+    }
+    invalidate();
+  }, [mats, clipRow, invalidate]);
 
   const pressRef = useRef<{ x: number; y: number; id: number } | null>(null);
 

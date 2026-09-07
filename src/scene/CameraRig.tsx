@@ -123,6 +123,8 @@ export function CameraRig() {
       const st = useShelf.getState();
       if (e.key === 'ArrowDown' || e.key === 'PageDown') setScrollRow(st.scrollRow + 1);
       else if (e.key === 'ArrowUp' || e.key === 'PageUp') setScrollRow(st.scrollRow - 1);
+      else if (e.key === 'ArrowRight') st.panRow(1);
+      else if (e.key === 'ArrowLeft') st.panRow(-1);
       else if (e.key === '+' || e.key === '=') st.setZoom(st.zoom * 1.25);
       else if (e.key === '-' || e.key === '_') st.setZoom(st.zoom / 1.25);
       else if (e.key === '0') st.resetView();
