@@ -80,7 +80,10 @@ export function ShelfRow({ shelf, row, repos }: Props) {
 
       <Html position={[0, plankY - plankT / 2, BOOK_DEPTH / 2 + 0.22]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <div className={`plate ${dragOver ? 'plate-active' : ''}`} style={{ background: theme.scene.plate, color: theme.scene.plateInk }}>
-          Shelf {String(row + 1).padStart(2, '0')} · {shelf.label} · {repos.length} {repos.length === 1 ? (shelf.kind === 'links' ? 'link' : 'repo') : shelf.kind === 'links' ? 'links' : 'repos'}
+          Shelf {String(row + 1).padStart(2, '0')} · {shelf.label} ·{' '}
+          {shelf.kind === 'github' && repos.length === 0
+            ? 'sign in with gh auth login'
+            : `${repos.length} ${repos.length === 1 ? (shelf.kind === 'links' ? 'link' : 'repo') : shelf.kind === 'links' ? 'links' : 'repos'}`}
         </div>
       </Html>
 

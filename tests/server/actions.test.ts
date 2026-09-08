@@ -4,10 +4,11 @@ import path from 'node:path';
 import { makeTempRoot, makeRepo, rm } from './helpers';
 import { scanRepo } from '../../server/scanner';
 import { shelfId } from '../../server/config';
-import { ActionError, moveRepo, renameRepo, mkdirInRepo, openRepo, cloneRepo } from '../../server/actions';
+import { ActionError, moveRepo, renameRepo, mkdirInRepo, openRepo, cloneRepo, setVisibility, setArchived, deleteGitHubRepo } from '../../server/actions';
 import { linkRepo } from '../../server/scanner';
 import { appendAudit, readAudit } from '../../server/audit';
 import type { Runner } from '../../server/git';
+import type { Repo } from '../../server/types';
 
 let rootA: string;
 let rootB: string;
@@ -244,5 +245,61 @@ describe('audit', () => {
     expect(entries[0].action).toBe('move');
     expect(entries[0].ts).toMatch(/^\d{4}-/);
     expect(entries[1].error).toBe('exists');
+  });
+});
+
+describe('GitHub account actions', () => {
+  const ghBook = (over: Partial<Repo> = {}): Repo => ({
+    id: 'g1',
+    name: 'thing',
+    path: '',
+    shelfId: 's',
+    virtual: true,
+    linkUrl: 'https://github.com/me/thing',
+    visibility: 'public',
+    archived: false,
+    branch: null,
+    lastCommitAt: null,
+    commitCount: 0,
+    dirtyCount: 0,
+    sizeKB: 0,
+    languageGuess: null,
+    remoteUrl: 'https://github.com/me/thing.git',
+    owner: 'me',
+    repoSlug: 'me/thing',
+    github: null,
+    ...over,
+  });
+  const record = (): { calls: string[][]; runner: Runner } => {
+    const calls: string[][] = [];
+    return { calls, runner: async (cmd, args) => (calls.push([cmd, ...args]), { code: 0, stdout: '', stderr: '' }) };
+  };
+
+  it('changes visibility with the gh flag that accepts consequences, only for the owner', async () => {
+    const { calls, runner } = record();
+    await setVisibility(ghBook(), 'private', runner, 'ME');
+    expect(calls[0]).toEqual(['gh', 'repo', 'edit', 'me/thing', '--visibility', 'private', '--accept-visibility-change-consequences']);
+    await expectAction(setVisibility(ghBook(), 'public', runner, 'me'), 400, 'same_visibility');
+    await expectAction(setVisibility(ghBook(), 'private', runner, 'someone'), 403, 'not_owner');
+    await expectAction(setVisibility(ghBook(), 'private', runner, null), 401, 'gh_unavailable');
+  });
+
+  it('archives and unarchives', async () => {
+    const { calls, runner } = record();
+    await setArchived(ghBook(), true, runner, 'me');
+    expect(calls[0]).toEqual(['gh', 'repo', 'archive', 'me/thing', '--yes']);
+    await setArchived(ghBook({ archived: true }), false, runner, 'me');
+    expect(calls[1]).toEqual(['gh', 'repo', 'unarchive', 'me/thing', '--yes']);
+    await expectAction(setArchived(ghBook(), false, runner, 'me'), 400, 'same_state');
+  });
+
+  it('deletes only with the exact name typed, only virtual books, and explains a missing scope', async () => {
+    const { calls, runner } = record();
+    await expectAction(deleteGitHubRepo(ghBook(), 'thin', runner, 'me'), 400, 'confirm_mismatch');
+    await expectAction(deleteGitHubRepo(ghBook({ virtual: false, path: 'C:/x' }), 'thing', runner, 'me'), 400, 'has_clone');
+    await deleteGitHubRepo(ghBook(), 'thing', runner, 'me');
+    expect(calls[0]).toEqual(['gh', 'repo', 'delete', 'me/thing', '--yes']);
+    const noScope: Runner = async () => ({ code: 1, stdout: '', stderr: 'HTTP 403: Must have admin rights... delete_repo scope' });
+    await expectAction(deleteGitHubRepo(ghBook(), 'thing', noScope, 'me'), 403, 'scope');
   });
 });

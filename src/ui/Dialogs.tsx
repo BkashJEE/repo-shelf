@@ -134,6 +134,86 @@ function CloneDialog() {
   );
 }
 
+function VisibilityDialog() {
+  const dialog = useShelf((s) => s.dialog)!;
+  const repo = useShelf((s) => s.repos.find((r) => r.id === dialog.repoId));
+  const close = useShelf((s) => s.closeDialog);
+  const busy = useShelf((s) => s.busy);
+  const runAction = useShelf((s) => s.runAction);
+  if (!repo || !dialog.visibility) return null;
+  const vis = dialog.visibility;
+  const submit = async () => {
+    try {
+      await runAction(`${repo.name} is now ${vis}`, () => api.setVisibility(repo.id, vis));
+      close();
+    } catch {
+      /* toast shown */
+    }
+  };
+  return (
+    <Modal title={vis === 'private' ? 'Make private' : 'Make public'} onClose={close}>
+      <p className="modal-lead">
+        Make <b>{repo.repoSlug}</b> {vis}?
+      </p>
+      {vis === 'public' ? (
+        <p className="modal-warn">Everything in this repo, including its full history, becomes visible to anyone. Check for secrets first.</p>
+      ) : (
+        <p className="modal-note">Stars and watchers are lost, forks are detached, and GitHub Pages stops serving. Collaborators keep access.</p>
+      )}
+      <div className="modal-actions">
+        <button className="btn" onClick={close} disabled={busy}>
+          Cancel
+        </button>
+        <button className={`btn ${vis === 'public' ? 'danger' : 'primary'}`} onClick={submit} disabled={busy}>
+          {busy ? 'Working…' : vis === 'public' ? 'Make public' : 'Make private'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function DeleteDialog() {
+  const dialog = useShelf((s) => s.dialog)!;
+  const repo = useShelf((s) => s.repos.find((r) => r.id === dialog.repoId));
+  const close = useShelf((s) => s.closeDialog);
+  const busy = useShelf((s) => s.busy);
+  const runAction = useShelf((s) => s.runAction);
+  const [typed, setTyped] = useState('');
+  if (!repo) return null;
+  const ok = typed === repo.name;
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!ok) return;
+    try {
+      await runAction(`Deleted ${repo.repoSlug} on GitHub`, () => api.deleteOnGitHub(repo.id, typed));
+      close();
+    } catch {
+      /* toast shown */
+    }
+  };
+  return (
+    <Modal title="Delete repository on GitHub" onClose={close}>
+      <form onSubmit={submit}>
+        <p className="modal-warn">
+          This permanently deletes <b>{repo.repoSlug}</b> on GitHub: code, issues, pull requests, releases, stars. There is no undo.
+          {repo.github?.isFork ? ' It is a fork: any open pull requests you sent from it will be closed.' : ''}
+        </p>
+        <label className="lbl">Type the repository name to confirm</label>
+        <input className="field" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={repo.name} autoFocus disabled={busy} spellCheck={false} />
+        <p className="modal-note">Needs the <code>delete_repo</code> scope: <code>gh auth refresh -h github.com -s delete_repo</code></p>
+        <div className="modal-actions">
+          <button type="button" className="btn" onClick={close} disabled={busy}>
+            Cancel
+          </button>
+          <button type="submit" className="btn danger" disabled={!ok || busy}>
+            {busy ? 'Deleting…' : 'Delete forever'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function RenameDialog() {
   const dialog = useShelf((s) => s.dialog)!;
   const repo = useShelf((s) => s.repos.find((r) => r.id === dialog.repoId));
@@ -303,5 +383,7 @@ export function Dialogs() {
   if (kind === 'mkdir') return <MkdirDialog />;
   if (kind === 'shelves') return <ShelvesDialog />;
   if (kind === 'clone') return <CloneDialog />;
+  if (kind === 'visibility') return <VisibilityDialog />;
+  if (kind === 'delete') return <DeleteDialog />;
   return null;
 }

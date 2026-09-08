@@ -1131,3 +1131,19 @@ code {
   color: var(--accent);
   margin-left: 6px;
 }
+
+/* GitHub management */
+.gh-manage {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn.danger-outline {
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 45%, var(--line));
+}
+.btn.danger-outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+}

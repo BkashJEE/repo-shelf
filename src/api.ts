@@ -59,6 +59,10 @@ export const api = {
     post<ActionResponse>('/api/repo/mkdir', { repoId, relDir, gitkeep }),
   open: (repoId: string, target: OpenTarget) => post<{ ok: true }>('/api/repo/open', { repoId, target }),
   clone: (repoId: string, targetShelfId: string) => post<ActionResponse>('/api/repo/clone', { repoId, targetShelfId }),
+  setVisibility: (repoId: string, visibility: 'public' | 'private') =>
+    post<ActionResponse>('/api/repo/visibility', { repoId, visibility }),
+  setArchived: (repoId: string, archived: boolean) => post<ActionResponse>('/api/repo/archive', { repoId, archived }),
+  deleteOnGitHub: (repoId: string, confirmName: string) => post<ActionResponse>('/api/repo/delete', { repoId, confirmName }),
   addShelf: (label: string, path: string) => post<AppState>('/api/shelves', { label, path }),
   removeShelf: (id: string) => request<AppState>(`/api/shelves/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

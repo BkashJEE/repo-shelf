@@ -13,6 +13,10 @@ export interface ShelfConfigEntry {
   links?: LinkEntry[];
   /** Hidden until the user reveals it (type "hermes" in the app). */
   hidden?: boolean;
+  /** GitHub account shelf: 'me' (the gh login) or a login. Lists that account's repos via gh. */
+  github?: string;
+  /** Which repos of the account to show. Default 'all'. */
+  visibility?: 'public' | 'private' | 'all';
 }
 
 export interface ShelfConfig {
@@ -21,7 +25,7 @@ export interface ShelfConfig {
   githubCacheHours: number;
 }
 
-export type ShelfKind = 'disk' | 'links';
+export type ShelfKind = 'disk' | 'links' | 'github';
 
 export interface Shelf {
   id: string;
@@ -51,6 +55,9 @@ export interface Repo {
   shelfId: string;
   virtual: boolean;
   linkUrl: string | null;
+  /** GitHub visibility when known (github books always, disk books after enrichment). */
+  visibility: 'public' | 'private' | null;
+  archived: boolean;
   branch: string | null;
   lastCommitAt: string | null;
   commitCount: number;

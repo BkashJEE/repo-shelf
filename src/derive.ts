@@ -83,7 +83,7 @@ export function hasRedTab(r: Repo): boolean {
   return r.dirtyCount > 0;
 }
 
-export type Filter = 'all' | `lang:${string}` | 'remote' | 'dirty' | 'stale';
+export type Filter = 'all' | `lang:${string}` | 'remote' | 'dirty' | 'stale' | 'public' | 'private' | 'archived';
 
 export function matches(
   r: Repo,
@@ -100,6 +100,12 @@ export function matches(
     if (!r.remoteUrl && !r.linkUrl) return false;
   } else if (filter === 'dirty') {
     if (r.dirtyCount === 0) return false;
+  } else if (filter === 'public') {
+    if (r.visibility !== 'public') return false;
+  } else if (filter === 'private') {
+    if (r.visibility !== 'private') return false;
+  } else if (filter === 'archived') {
+    if (!r.archived) return false;
   } else if (filter === 'stale') {
     if (!isStale(r, staleAfterDays, now)) return false;
   }

@@ -34,6 +34,8 @@ export function defaultConfig(home: string = os.homedir()): ShelfConfig {
       { label: 'Developer', path: path.join(home, 'Developer') },
       { label: 'Documents', path: path.join(home, 'Documents') },
       { label: 'Home', path: home },
+      GITHUB_PUBLIC_SHELF,
+      GITHUB_PRIVATE_SHELF,
       FEATURED_SHELF,
       SECRET_SHELF,
     ],
@@ -46,6 +48,18 @@ export function isLinkShelf(e: ShelfConfigEntry): boolean {
   return Array.isArray(e.links);
 }
 
+export function isGithubShelf(e: ShelfConfigEntry): boolean {
+  return typeof e.github === 'string' && e.github.trim() !== '';
+}
+
+/** Any shelf whose books are not folders on disk. */
+export function isVirtualShelf(e: ShelfConfigEntry): boolean {
+  return isLinkShelf(e) || isGithubShelf(e);
+}
+
+export const GITHUB_PUBLIC_SHELF: ShelfConfigEntry = { label: 'GitHub · public', github: 'me', visibility: 'public' };
+export const GITHUB_PRIVATE_SHELF: ShelfConfigEntry = { label: 'GitHub · private', github: 'me', visibility: 'private' };
+
 export function shelfId(p: string): string {
   const norm = path.resolve(p).toLowerCase().replace(/[\\/]+$/, '');
   return crypto.createHash('sha1').update(norm).digest('hex').slice(0, 12);
@@ -53,6 +67,9 @@ export function shelfId(p: string): string {
 
 /** Stable id for any shelf entry: disk shelves hash their path, link shelves their label. */
 export function entryId(e: ShelfConfigEntry): string {
+  if (isGithubShelf(e)) {
+    return crypto.createHash('sha1').update(`github:${e.github!.toLowerCase()}:${e.visibility ?? 'all'}`).digest('hex').slice(0, 12);
+  }
   if (isLinkShelf(e)) return crypto.createHash('sha1').update(`links:${e.label.toLowerCase()}`).digest('hex').slice(0, 12);
   return shelfId(e.path!);
 }
@@ -67,6 +84,12 @@ function normalizeLink(l: Partial<LinkEntry>): LinkEntry {
 }
 
 function normalizeEntry(e: Partial<ShelfConfigEntry>): ShelfConfigEntry {
+  if (e && typeof e.github === 'string' && e.github.trim()) {
+    const vis = e.visibility === 'public' || e.visibility === 'private' ? e.visibility : 'all';
+    const github = e.github.trim();
+    const label = typeof e.label === 'string' && e.label.trim() ? e.label.trim() : `GitHub · ${vis === 'all' ? github : vis}`;
+    return { label, github, visibility: vis, ...(e.hidden ? { hidden: true } : {}) };
+  }
   if (e && Array.isArray(e.links)) {
     const label = typeof e.label === 'string' && e.label.trim() ? e.label.trim() : 'Links';
     return { label, links: e.links.map(normalizeLink), ...(e.hidden ? { hidden: true } : {}) };
@@ -84,7 +107,7 @@ function normalizeEntry(e: Partial<ShelfConfigEntry>): ShelfConfigEntry {
 
 export function validateShelfPaths(shelves: ShelfConfigEntry[]): void {
   for (const s of shelves) {
-    if (isLinkShelf(s)) continue;
+    if (isVirtualShelf(s)) continue;
     if (!s.path || !fs.existsSync(s.path) || !fs.statSync(s.path).isDirectory()) {
       throw new Error(`shelf_path_missing: ${s.path}`);
     }
@@ -95,7 +118,7 @@ export function loadConfig(file: string, home: string = os.homedir()): ShelfConf
   if (!fs.existsSync(file)) {
     const cfg = defaultConfig(home);
     // Only keep default disk shelves that actually exist so first boot never fails.
-    cfg.shelves = cfg.shelves.filter((s) => isLinkShelf(s) || fs.existsSync(s.path!));
+    cfg.shelves = cfg.shelves.filter((s) => isVirtualShelf(s) || fs.existsSync(s.path!));
     saveConfig(file, cfg);
     return cfg;
   }

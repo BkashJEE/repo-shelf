@@ -29,6 +29,8 @@ function repo(over: Partial<Repo> = {}): Repo {
     shelfId: 's1',
     virtual: false,
     linkUrl: null,
+    visibility: null,
+    archived: false,
     branch: 'main',
     lastCommitAt: '2026-09-01T00:00:00Z',
     commitCount: 10,

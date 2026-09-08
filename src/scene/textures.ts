@@ -6,7 +6,7 @@ import type { Theme } from '../themes';
 const cache = new Map<string, { key: string; spine: THREE.CanvasTexture; cover: THREE.CanvasTexture }>();
 
 function visualKey(r: Repo, staleDays: number): string {
-  return [r.name, languageOf(r), r.dirtyCount > 0, r.github?.stars ?? 0, r.virtual ? 'link' : isStale(r, staleDays), r.github?.description ?? ''].join('|');
+  return [r.name, languageOf(r), r.dirtyCount > 0, r.github?.stars ?? 0, r.virtual ? 'link' : isStale(r, staleDays), r.github?.description ?? '', r.visibility, r.archived].join('|');
 }
 
 function desaturate(hex: string, amount = 0.55): string {
@@ -132,7 +132,13 @@ function drawSpine(r: Repo, staleDays: number): HTMLCanvasElement {
   ctx.shadowBlur = 0;
   ctx.font = `500 30px ${SANS}`;
   ctx.fillStyle = 'rgba(246,244,238,0.7)';
-  ctx.fillText(r.virtual ? (r.repoSlug ? 'GITHUB  ↗' : 'LINK  ↗') : languageOf(r).toUpperCase(), 0, px / 2 + 32);
+  const foot = r.virtual ? (r.repoSlug ? (r.visibility === 'private' ? '🔒 PRIVATE' : 'PUBLIC  ↗') : 'LINK  ↗') : languageOf(r).toUpperCase();
+  ctx.fillText(foot, 0, px / 2 + 32);
+  if (r.archived) {
+    ctx.font = `700 22px ${SANS}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('ARCHIVED', 0, -px / 2 - 34);
+  }
   ctx.restore();
   if (r.virtual) {
     // dotted border: this book is not on disk yet
@@ -176,7 +182,7 @@ function drawCover(r: Repo, staleDays: number): HTMLCanvasElement {
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(246,244,238,0.75)';
   ctx.font = `500 30px ${SANS}`;
-  ctx.fillText(r.virtual ? (r.repoSlug ? 'ON GITHUB  ↗' : 'LINK  ↗') : languageOf(r).toUpperCase(), W / 2, 165);
+  ctx.fillText(r.virtual ? (r.repoSlug ? (r.visibility === 'private' ? '🔒 PRIVATE ON GITHUB' : 'PUBLIC ON GITHUB') : 'LINK  ↗') : languageOf(r).toUpperCase(), W / 2, 165);
 
   ctx.fillStyle = '#f6f4ee';
   ctx.textBaseline = 'top';

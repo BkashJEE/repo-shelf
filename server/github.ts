@@ -34,7 +34,31 @@ export function toMeta(json: GhRepoJson, now: Date = new Date()): GitHubMeta {
   };
 }
 
+export interface GhListItem {
+  nameWithOwner: string;
+  name: string;
+  visibility: 'PUBLIC' | 'PRIVATE' | 'INTERNAL';
+  isArchived: boolean;
+  isFork: boolean;
+  description: string | null;
+  primaryLanguage: { name: string } | null;
+  stargazerCount: number;
+  pushedAt: string;
+  url: string;
+  repositoryTopics: { name: string }[] | null;
+  diskUsage: number | null;
+}
+
+export const LIST_FIELDS =
+  'nameWithOwner,name,visibility,isArchived,isFork,description,primaryLanguage,stargazerCount,pushedAt,url,repositoryTopics,diskUsage';
+
+const LIST_TTL_MS = 10 * 60 * 1000;
+
+export type RepoLister = (login: string) => Promise<GhListItem[]>;
+
 export class GitHubEnricher {
+  private lists = new Map<string, { at: number; items: GhListItem[] }>();
+
   private cache: Record<string, GitHubMeta> = {};
   private ready = false;
   private ok = false;
@@ -71,6 +95,31 @@ export class GitHubEnricher {
 
   login(): string | null {
     return this.user;
+  }
+
+  /** Every repo of an account (`'me'` = the gh login), cached 10 minutes. Empty when gh is unavailable. */
+  listRepos: RepoLister = async (login) => {
+    if (!this.available()) return [];
+    const who = login === 'me' ? (this.user ?? '') : login;
+    const key = who.toLowerCase();
+    const hit = this.lists.get(key);
+    if (hit && this.now().getTime() - hit.at < LIST_TTL_MS) return hit.items;
+    const args = ['repo', 'list', ...(login === 'me' ? [] : [who]), '--limit', '500', '--json', LIST_FIELDS];
+    const r = await this.runner('gh', args, { timeoutMs: 60_000 });
+    if (r.code !== 0) return hit?.items ?? [];
+    let items: GhListItem[];
+    try {
+      items = JSON.parse(r.stdout) as GhListItem[];
+    } catch {
+      return hit?.items ?? [];
+    }
+    this.lists.set(key, { at: this.now().getTime(), items });
+    return items;
+  };
+
+  /** Drop the account list cache so the next scan hits GitHub (after visibility / archive / delete). */
+  invalidateLists(): void {
+    this.lists.clear();
   }
 
   private fresh(meta: GitHubMeta): boolean {

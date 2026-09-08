@@ -4,12 +4,13 @@ import { api, ApiError, subscribeEvents } from './api';
 import { matches, type Filter } from './derive';
 import { applyThemeCss, loadThemeId, saveThemeId, themeById } from './themes';
 
-export type DialogKind = 'move' | 'rename' | 'mkdir' | 'shelves' | 'clone';
+export type DialogKind = 'move' | 'rename' | 'mkdir' | 'shelves' | 'clone' | 'visibility' | 'delete';
 
 export interface Dialog {
   kind: DialogKind;
   repoId?: string;
   targetShelfId?: string;
+  visibility?: 'public' | 'private';
 }
 
 export interface Toast {
@@ -181,7 +182,22 @@ export const useShelf = create<ShelfState>()((set, get) => ({
     if (!d || !drop) return;
     const repo = get().repos.find((r) => r.id === d.repoId);
     if (!repo || !d.overShelfId || d.overShelfId === repo.shelfId) return;
-    set({ dialog: { kind: 'move', repoId: repo.id, targetShelfId: d.overShelfId } });
+    const target = get().allShelves.find((s) => s.id === d.overShelfId);
+    if (!target) return;
+    if (target.kind === 'github') {
+      // Dropping a GitHub book on the other GitHub shelf flips its visibility.
+      const vis = /private/i.test(target.label) ? 'private' : /public/i.test(target.label) ? 'public' : null;
+      if (repo.virtual && repo.repoSlug && vis && vis !== repo.visibility) {
+        set({ dialog: { kind: 'visibility', repoId: repo.id, targetShelfId: target.id, visibility: vis } });
+      }
+      return;
+    }
+    if (target.kind !== 'disk') return;
+    if (repo.virtual) {
+      set({ dialog: { kind: 'clone', repoId: repo.id, targetShelfId: target.id } });
+      return;
+    }
+    set({ dialog: { kind: 'move', repoId: repo.id, targetShelfId: target.id } });
   },
 
   openDialog: (dialog) => set({ dialog }),

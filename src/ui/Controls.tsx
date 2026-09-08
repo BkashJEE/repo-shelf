@@ -40,6 +40,8 @@ export function Controls() {
     { key: 'remote', label: 'Has remote' },
     { key: 'dirty', label: 'Dirty' },
     { key: 'stale', label: 'Stale' },
+    ...(repos.some((r) => r.visibility) ? ([{ key: 'public', label: 'Public' }, { key: 'private', label: 'Private' }] as const) : []),
+    ...(repos.some((r) => r.archived) ? ([{ key: 'archived', label: 'Archived' }] as const) : []),
   ];
 
   return (

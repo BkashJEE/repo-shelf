@@ -23,7 +23,8 @@ Built with React Three Fiber, Express, and `gh`. Runs on your machine only. Wind
 | Gold band near the top | Repo has GitHub stars |
 | Red tab at the top corner | Uncommitted changes |
 | Yellow dot at the bottom | git could not read the repo |
-| Dotted outline, "GITHUB ↗" | A link book: lives on a link shelf, not on disk yet |
+| Dotted outline, "PUBLIC ↗" or "🔒 PRIVATE" | A GitHub or link book: not on disk yet; the lock marks a private repo |
+| "ARCHIVED" stamp | Archived on GitHub |
 
 ## Actions
 
@@ -33,7 +34,8 @@ From the detail panel or by dragging:
 - **Rename** a repo. Renames the folder. Optionally also renames it on GitHub and updates `origin` when the repo is owned by your `gh` account.
 - **New folder** inside a repo, with an optional `.gitkeep`. Paths are confined to the repo.
 - **Open** in VS Code, a terminal (Windows Terminal, Terminal.app, or your Linux default), the file manager, or the GitHub page.
-- **Clone** a link book onto any of your shelves with `git clone`.
+- **Clone** a link or GitHub book onto any of your shelves with `git clone`.
+- **Make public / private**, **archive**, **delete** repos on your GitHub account from their books on the GitHub shelves.
 
 Every action is logged to `.cache/actions.log`. Nothing is ever deleted.
 
@@ -56,6 +58,16 @@ npm start
 ```
 
 Then open http://127.0.0.1:4877.
+
+## GitHub account shelves
+
+Two shelves list every repo on your GitHub account, split into **GitHub · public** and **GitHub · private**, straight from `gh`. Private spines carry a lock. From a book's page you can clone it onto a folder shelf, make it public or private, archive it, or delete it (you type the name to confirm; needs `gh auth refresh -s delete_repo`). Drag a book from the public shelf to the private one to make it private, and back. Repos you don't own are read-only.
+
+```json
+{ "label": "GitHub · public", "github": "me", "visibility": "public" }
+{ "label": "GitHub · private", "github": "me", "visibility": "private" }
+{ "label": "Everything by octocat", "github": "octocat" }
+```
 
 ## Link shelves and the secret shelf
 

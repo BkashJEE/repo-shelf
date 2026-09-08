@@ -3,7 +3,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import type { LinkEntry, Repo, Shelf, ShelfConfig, ShelfConfigEntry } from './types.js';
 import { execRunner, git, type Runner } from './git.js';
-import { entryId, isLinkShelf } from './config.js';
+import { entryId, isGithubShelf, isLinkShelf } from './config.js';
+import type { GhListItem, RepoLister } from './github.js';
 import { sizeAndLanguage } from './walk.js';
 
 export const SCAN_CONCURRENCY = 8;
@@ -40,6 +41,8 @@ export async function scanRepo(dir: string, shelf: string, runner: Runner = exec
     shelfId: shelf,
     virtual: false,
     linkUrl: null,
+    visibility: null,
+    archived: false,
     branch: null,
     lastCommitAt: null,
     commitCount: 0,
@@ -114,6 +117,8 @@ export function linkRepo(link: LinkEntry, shelf: string): Repo {
     shelfId: shelf,
     virtual: true,
     linkUrl: url,
+    visibility: null,
+    archived: false,
     branch: null,
     lastCommitAt: null,
     commitCount: 0,
@@ -127,11 +132,60 @@ export function linkRepo(link: LinkEntry, shelf: string): Repo {
   };
 }
 
+/** A book for one of the account's GitHub repos. Everything GitHub knows is filled in up front. */
+export function githubRepo(item: GhListItem, shelf: string, now: Date = new Date()): Repo {
+  const slug = item.nameWithOwner;
+  const [owner] = slug.split('/');
+  const vis = item.visibility === 'PRIVATE' || item.visibility === 'INTERNAL' ? 'private' : 'public';
+  return {
+    id: crypto.createHash('sha1').update(`gh:${slug.toLowerCase()}`).digest('hex').slice(0, 16),
+    name: item.name,
+    path: '',
+    shelfId: shelf,
+    virtual: true,
+    linkUrl: item.url,
+    visibility: vis,
+    archived: Boolean(item.isArchived),
+    branch: null,
+    lastCommitAt: item.pushedAt ?? null,
+    commitCount: 0,
+    dirtyCount: 0,
+    sizeKB: item.diskUsage ?? 0,
+    languageGuess: item.primaryLanguage?.name ?? null,
+    remoteUrl: `https://github.com/${slug}.git`,
+    owner,
+    repoSlug: slug,
+    github: {
+      description: item.description ?? null,
+      language: item.primaryLanguage?.name ?? null,
+      stars: item.stargazerCount ?? 0,
+      topics: (item.repositoryTopics ?? []).map((t) => t.name),
+      isPrivate: vis === 'private',
+      isFork: Boolean(item.isFork),
+      pushedAt: item.pushedAt,
+      htmlUrl: item.url,
+      fetchedAt: now.toISOString(),
+    },
+  };
+}
+
+const noLister: RepoLister = async () => [];
+
 export async function scanShelf(
   entry: ShelfConfigEntry,
   runner: Runner = execRunner,
+  lister: RepoLister = noLister,
 ): Promise<{ shelf: Shelf; repos: Repo[] }> {
   const id = entryId(entry);
+  if (isGithubShelf(entry)) {
+    const items = await lister(entry.github!);
+    const want = entry.visibility ?? 'all';
+    const repos = items
+      .filter((it) => want === 'all' || (it.visibility === 'PUBLIC' ? 'public' : 'private') === want)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+      .map((it) => githubRepo(it, id));
+    return { shelf: { id, label: entry.label, path: null, kind: 'github', hidden: Boolean(entry.hidden), repoCount: repos.length }, repos };
+  }
   if (isLinkShelf(entry)) {
     const repos = (entry.links ?? []).map((l) => linkRepo(l, id));
     return { shelf: { id, label: entry.label, path: null, kind: 'links', hidden: Boolean(entry.hidden), repoCount: repos.length }, repos };
@@ -147,7 +201,8 @@ export async function scanShelf(
 export async function scanAll(
   cfg: ShelfConfig,
   runner: Runner = execRunner,
+  lister: RepoLister = noLister,
 ): Promise<{ shelves: Shelf[]; repos: Repo[] }> {
-  const results = await Promise.all(cfg.shelves.map((s) => scanShelf(s, runner)));
+  const results = await Promise.all(cfg.shelves.map((s) => scanShelf(s, runner, lister)));
   return { shelves: results.map((r) => r.shelf), repos: results.flatMap((r) => r.repos) };
 }

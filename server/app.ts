@@ -3,11 +3,22 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { spawn as nodeSpawn } from 'node:child_process';
 import type { AppState, OpenTarget, Repo, Shelf, ShelfConfig, ShelfConfigEntry } from './types.js';
-import { entryId, loadConfig, saveConfig, validateShelfPaths } from './config.js';
+import { entryId, isGithubShelf, loadConfig, saveConfig, validateShelfPaths } from './config.js';
 import { execRunner, type Runner } from './git.js';
 import { scanAll, scanShelf } from './scanner.js';
 import { GitHubEnricher } from './github.js';
-import { ActionError, cloneRepo, mkdirInRepo, moveRepo, openRepo, renameRepo, type Spawner } from './actions.js';
+import {
+  ActionError,
+  cloneRepo,
+  deleteGitHubRepo,
+  mkdirInRepo,
+  moveRepo,
+  openRepo,
+  renameRepo,
+  setArchived,
+  setVisibility,
+  type Spawner,
+} from './actions.js';
 import { appendAudit } from './audit.js';
 import { EventHub } from './events.js';
 
@@ -68,7 +79,11 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
     void enricher.enrichAll(targets, (updated) => {
       const i = repos.findIndex((r) => r.id === updated.id);
       if (i >= 0) {
-        repos[i] = { ...repos[i], github: updated.github };
+        repos[i] = {
+          ...repos[i],
+          github: updated.github,
+          visibility: updated.github ? (updated.github.isPrivate ? 'private' : 'public') : repos[i].visibility,
+        };
         hub.broadcast('repo:update', repos[i]);
       }
     });
@@ -78,7 +93,7 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
     if (onlyShelf) {
       const entry = entryById(onlyShelf);
       if (!entry) return;
-      const { shelf, repos: fresh } = await scanShelf(entry, runner);
+      const { shelf, repos: fresh } = await scanShelf(entry, runner, enricher.listRepos);
       shelves = shelves.map((s) => (s.id === shelf.id ? shelf : s));
       const keepGithub = new Map(repos.filter((r) => r.github).map((r) => [r.repoSlug, r.github]));
       repos = [
@@ -93,7 +108,7 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
       } catch (err) {
         throw new ActionError(400, 'bad_config', err instanceof Error ? err.message : String(err));
       }
-      const result = await scanAll(config, runner);
+      const result = await scanAll(config, runner, enricher.listRepos);
       const keepGithub = new Map(repos.filter((r) => r.github).map((r) => [r.repoSlug, r.github]));
       shelves = result.shelves;
       repos = result.repos.map((r) => ({ ...r, github: (r.repoSlug && keepGithub.get(r.repoSlug)) || null }));
@@ -186,7 +201,7 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
       }
       config = { ...config, shelves: [...config.shelves, entry] };
       saveConfig(deps.configFile, config);
-      const { shelf, repos: fresh } = await scanShelf(entry, runner);
+      const { shelf, repos: fresh } = await scanShelf(entry, runner, enricher.listRepos);
       shelves = [...shelves, shelf];
       repos = [...repos, ...fresh];
       enrichInBackground(fresh);
@@ -266,6 +281,48 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
       await rescan(targetId);
       hub.broadcast('state:changed', { reason: 'clone' });
       res.json({ ok: true, newPath: result.newPath, state: state() });
+    }),
+  );
+
+  /** After a GitHub-side change, drop the list cache and rescan every GitHub shelf. */
+  async function refreshGithubShelves(): Promise<void> {
+    enricher.invalidateLists();
+    for (const e of config.shelves) if (isGithubShelf(e)) await rescan(entryId(e));
+  }
+
+  api.post(
+    '/repo/visibility',
+    wrap(async (req, res) => {
+      const repo = requireRepo(req);
+      const visibility = req.body?.visibility as 'public' | 'private';
+      await audited('visibility', repo, { visibility }, () => setVisibility(repo, visibility, runner, enricher.login()));
+      await refreshGithubShelves();
+      hub.broadcast('state:changed', { reason: 'visibility' });
+      res.json({ ok: true, state: state() });
+    }),
+  );
+
+  api.post(
+    '/repo/archive',
+    wrap(async (req, res) => {
+      const repo = requireRepo(req);
+      const archived = req.body?.archived === true;
+      await audited('archive', repo, { archived }, () => setArchived(repo, archived, runner, enricher.login()));
+      await refreshGithubShelves();
+      hub.broadcast('state:changed', { reason: 'archive' });
+      res.json({ ok: true, state: state() });
+    }),
+  );
+
+  api.post(
+    '/repo/delete',
+    wrap(async (req, res) => {
+      const repo = requireRepo(req);
+      const confirmName = typeof req.body?.confirmName === 'string' ? req.body.confirmName : '';
+      await audited('delete-github', repo, { confirmName }, () => deleteGitHubRepo(repo, confirmName, runner, enricher.login()));
+      await refreshGithubShelves();
+      hub.broadcast('state:changed', { reason: 'delete' });
+      res.json({ ok: true, state: state() });
     }),
   );
 

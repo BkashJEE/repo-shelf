@@ -126,7 +126,13 @@ export function Book({ repo, x, y, width, height, plankY }: Props) {
       t.opacity = 0.95;
       const row = rowAtY(tmpV.y, shelfCount);
       const overShelf = row >= 0 ? shelves[row] : null;
-      const over = overShelf && overShelf.kind === 'disk' ? overShelf.id : null;
+      // Disk books drop on disk shelves (move). GitHub / link books drop on disk shelves (clone)
+      // or, for GitHub books, on the other GitHub shelf (change visibility).
+      let over: string | null = null;
+      if (overShelf && overShelf.id !== repo.shelfId) {
+        if (overShelf.kind === 'disk') over = overShelf.id;
+        else if (overShelf.kind === 'github' && repo.virtual && repo.repoSlug) over = overShelf.id;
+      }
       useShelf.getState().dragOver(over);
     } else {
       t.x = x;

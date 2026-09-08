@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempRoot, makeRepo, rm } from './helpers';
-import { scanShelf, scanAll, parseRemote, repoId, linkRepo } from '../../server/scanner';
+import { scanShelf, scanAll, parseRemote, repoId, linkRepo, githubRepo } from '../../server/scanner';
 import { shelfId } from '../../server/config';
 import type { Runner } from '../../server/git';
 
@@ -123,5 +123,32 @@ describe('parseRemote', () => {
     expect(parseRemote('ssh://git@github.com/o/r.git')).toEqual({ owner: 'o', repoSlug: 'o/r' });
     expect(parseRemote('https://gitlab.com/o/r.git')).toEqual({ owner: null, repoSlug: null });
     expect(parseRemote(null)).toEqual({ owner: null, repoSlug: null });
+  });
+});
+
+describe('GitHub account shelves', () => {
+  const items = [
+    { nameWithOwner: 'me/zeta', name: 'zeta', visibility: 'PUBLIC', isArchived: false, isFork: false, description: 'Z', primaryLanguage: { name: 'Go' }, stargazerCount: 3, pushedAt: '2026-09-01T00:00:00Z', url: 'https://github.com/me/zeta', repositoryTopics: [{ name: 'cli' }], diskUsage: 120 },
+    { nameWithOwner: 'me/alpha', name: 'alpha', visibility: 'PRIVATE', isArchived: true, isFork: true, description: null, primaryLanguage: null, stargazerCount: 0, pushedAt: '2026-08-01T00:00:00Z', url: 'https://github.com/me/alpha', repositoryTopics: null, diskUsage: null },
+  ] as const;
+  const lister = async () => items.map((i) => ({ ...i, repositoryTopics: i.repositoryTopics ? [...i.repositoryTopics] : null }));
+
+  it('maps list items to virtual books with visibility, archive, fork, and metadata', () => {
+    const r = githubRepo({ ...items[0], repositoryTopics: [{ name: 'cli' }] }, 's');
+    expect(r).toMatchObject({ name: 'zeta', virtual: true, visibility: 'public', archived: false, repoSlug: 'me/zeta', owner: 'me', sizeKB: 120, languageGuess: 'Go' });
+    expect(r.github).toMatchObject({ stars: 3, topics: ['cli'], isPrivate: false, htmlUrl: 'https://github.com/me/zeta' });
+    const p = githubRepo({ ...items[1], repositoryTopics: null }, 's');
+    expect(p).toMatchObject({ visibility: 'private', archived: true });
+    expect(p.github?.isFork).toBe(true);
+  });
+
+  it('filters by the shelf visibility and sorts by name', async () => {
+    const pub = await scanShelf({ label: 'Pub', github: 'me', visibility: 'public' }, undefined, lister);
+    expect(pub.shelf.kind).toBe('github');
+    expect(pub.repos.map((r) => r.name)).toEqual(['zeta']);
+    const all = await scanShelf({ label: 'All', github: 'me', visibility: 'all' }, undefined, lister);
+    expect(all.repos.map((r) => r.name)).toEqual(['alpha', 'zeta']);
+    const none = await scanShelf({ label: 'Off', github: 'me' });
+    expect(none.repos).toEqual([]);
   });
 });

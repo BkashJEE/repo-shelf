@@ -3,7 +3,7 @@ import fssync from 'node:fs';
 import path from 'node:path';
 import { spawn as nodeSpawn } from 'node:child_process';
 import type { OpenTarget, Repo, ShelfConfigEntry } from './types.js';
-import { execRunner, type Runner } from './git.js';
+import { execRunner, type Runner, type RunResult } from './git.js';
 import { insideShelves, resolveInsideRepo, shelfOf, validRepoName } from './pathguard.js';
 
 export class ActionError extends Error {
@@ -292,4 +292,57 @@ export async function cloneRepo(
     throw new ActionError(502, 'clone_failed', `git clone failed: ${(r.stderr || r.stdout).trim().split('\n').pop() ?? 'unknown error'}`);
   }
   return { newPath: dest };
+}
+
+function requireOwnedOnGitHub(repo: Repo, login: string | null): string {
+  if (!repo.repoSlug || !repo.owner) throw new ActionError(400, 'no_github', 'This book is not a GitHub repo.');
+  if (!login) throw new ActionError(401, 'gh_unavailable', 'GitHub CLI is not signed in. Run `gh auth login`.');
+  if (repo.owner.toLowerCase() !== login.toLowerCase()) {
+    throw new ActionError(403, 'not_owner', `Only repos owned by ${login} can be changed from here.`);
+  }
+  return repo.repoSlug;
+}
+
+function ghFailure(what: string, r: RunResult): ActionError {
+  const text = (r.stderr || r.stdout).trim();
+  if (/delete_repo/.test(text)) {
+    return new ActionError(
+      403,
+      'scope',
+      'Your gh token lacks the delete_repo scope. Run `gh auth refresh -h github.com -s delete_repo` and try again.',
+    );
+  }
+  const last = text.split('\n').filter(Boolean).pop() ?? 'unknown error';
+  return new ActionError(502, 'github_failed', `${what} failed: ${last}`);
+}
+
+export async function setVisibility(
+  repo: Repo,
+  visibility: 'public' | 'private',
+  runner: Runner = execRunner,
+  login: string | null = null,
+): Promise<void> {
+  const slug = requireOwnedOnGitHub(repo, login);
+  if (visibility !== 'public' && visibility !== 'private') throw new ActionError(400, 'bad_visibility', 'Visibility must be public or private.');
+  if (repo.visibility === visibility) throw new ActionError(400, 'same_visibility', `Repo is already ${visibility}.`);
+  const r = await runner('gh', ['repo', 'edit', slug, '--visibility', visibility, '--accept-visibility-change-consequences'], { timeoutMs: 60_000 });
+  if (r.code !== 0) throw ghFailure('Changing visibility', r);
+}
+
+export async function setArchived(repo: Repo, archived: boolean, runner: Runner = execRunner, login: string | null = null): Promise<void> {
+  const slug = requireOwnedOnGitHub(repo, login);
+  if (repo.archived === archived) throw new ActionError(400, 'same_state', archived ? 'Repo is already archived.' : 'Repo is not archived.');
+  const r = await runner('gh', ['repo', archived ? 'archive' : 'unarchive', slug, '--yes'], { timeoutMs: 60_000 });
+  if (r.code !== 0) throw ghFailure(archived ? 'Archiving' : 'Unarchiving', r);
+}
+
+/** Deletes a GitHub repository. Irreversible. The caller must send the exact repo name as confirmation. */
+export async function deleteGitHubRepo(repo: Repo, confirmName: string, runner: Runner = execRunner, login: string | null = null): Promise<void> {
+  const slug = requireOwnedOnGitHub(repo, login);
+  if (confirmName !== repo.name) throw new ActionError(400, 'confirm_mismatch', 'Type the repository name exactly to confirm deletion.');
+  if (!repo.virtual) {
+    throw new ActionError(400, 'has_clone', 'This book is a local clone. Delete the GitHub repo from its book on the GitHub shelf.');
+  }
+  const r = await runner('gh', ['repo', 'delete', slug, '--yes'], { timeoutMs: 60_000 });
+  if (r.code !== 0) throw ghFailure('Deleting', r);
 }

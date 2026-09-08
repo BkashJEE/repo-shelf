@@ -28,7 +28,7 @@ Run `npm test` and `npm run typecheck` before you consider a task done. Add test
 
 ## Hard rules
 
-1. The API must stay loopback only. Never add a route that deletes a repository.
+1. The API must stay loopback only. Never delete anything on disk. Deleting a repo on GitHub is allowed only through `deleteGitHubRepo`, which requires the exact name typed and the owner's gh login.
 2. Every path from the client goes through `pathguard.ts` before touching disk.
 3. Every mutating action is audited via `audit.ts`.
 4. Never run move/rename against real user repos in tests. Use `tests/server/helpers.ts` or the e2e fixtures in `%TEMP%/repo-shelf-e2e`.
@@ -43,6 +43,7 @@ Run `npm test` and `npm run typecheck` before you consider a task done. Add test
 - Camera state (`zoom`, `orbit`, `focus`, `scrollRow`) lives in the store; `CameraRig` only eases toward it.
 - Themes: add to `THEMES` in `src/themes.ts`; both `ui` (CSS vars) and `scene` (3D colors) are required.
 - Responsive breakpoints: 1000px (tablet) and 640px (phone) in `src/styles.css`. The detail page sits beside the bookcase (never over it) and stacks below it on phones.
+- GitHub account shelves: `ShelfConfigEntry.github` (`'me'` or a login) with `visibility` lists an account's repos as virtual books (`scanner.githubRepo`); actions `setVisibility`, `setArchived`, `deleteGitHubRepo`, `cloneRepo` apply. Dragging between the public and private GitHub shelves changes visibility.
 - Link shelves: `ShelfConfigEntry.links` makes virtual books (`Repo.virtual`, `path: ''`). Server actions refuse them with `400 virtual`; only `open github` and `clone` apply. `hidden: true` shelves are revealed client-side by typing `hermes` (see `revealSecret` in the store).
 - Bookcase styles: `caseStyle` in the store (`classic | modern | floating`) toggles geometry in `Bookcase.tsx` / `Shelf.tsx`.
 

@@ -27,6 +27,9 @@ function fakeGh(opts: { authed?: boolean; login?: string; calls?: string[][] }):
   return async (cmd, args) => {
     opts.calls?.push([cmd, ...args]);
     if (cmd !== 'gh') return { code: 1, stdout: '', stderr: 'unexpected' };
+    if (args[0] === 'repo' && args[1] === 'list') {
+      return { code: 0, stdout: JSON.stringify([{ nameWithOwner: `${opts.login ?? 'me'}/thing`, name: 'thing', visibility: 'PRIVATE', isArchived: false, isFork: false, description: 'A thing', primaryLanguage: null, stargazerCount: 0, pushedAt: '2026-09-01T00:00:00Z', url: 'https://github.com/me/thing', repositoryTopics: [], diskUsage: 5 }]), stderr: '' };
+    }
     if (args[0] === 'auth') return { code: opts.authed === false ? 1 : 0, stdout: '', stderr: '' };
     if (args[0] === 'api' && args[1] === 'user') return { code: 0, stdout: `${opts.login ?? 'me'}\n`, stderr: '' };
     if (args[0] === 'api' && args[1].startsWith('repos/')) {
@@ -50,6 +53,8 @@ function repo(slug: string | null): Repo {
     dirtyCount: 0,
     sizeKB: 1,
     languageGuess: null,
+    visibility: null,
+    archived: false,
     remoteUrl: slug ? `https://github.com/${slug}.git` : null,
     owner: slug ? slug.split('/')[0] : null,
     repoSlug: slug,
@@ -114,5 +119,27 @@ describe('GitHubEnricher', () => {
     await e.enrichAll([repo(null), repo('me/thing')], (r) => updated.push(r));
     expect(updated).toHaveLength(1);
     expect(updated[0].github?.stars).toBe(7);
+  });
+});
+
+describe('listRepos', () => {
+  it('lists the account, caches for 10 minutes, and can be invalidated', async () => {
+    const calls: string[][] = [];
+    let now = new Date('2026-09-07T00:00:00Z');
+    const e = new GitHubEnricher(path.join(tmp, 'gh.json'), fakeGh({ calls, login: 'me' }), 24, () => now);
+    await e.init();
+    const listCalls = () => calls.filter((c) => c[1] === 'repo' && c[2] === 'list').length;
+    expect((await e.listRepos('me')).map((i) => i.name)).toEqual(['thing']);
+    await e.listRepos('me');
+    expect(listCalls()).toBe(1);
+    e.invalidateLists();
+    await e.listRepos('me');
+    expect(listCalls()).toBe(2);
+    now = new Date('2026-09-07T01:00:00Z');
+    await e.listRepos('me');
+    expect(listCalls()).toBe(3);
+    const off = new GitHubEnricher(path.join(tmp, 'gh2.json'), fakeGh({ authed: false }), 24);
+    await off.init();
+    expect(await off.listRepos('me')).toEqual([]);
   });
 });
