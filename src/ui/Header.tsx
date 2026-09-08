@@ -1,6 +1,7 @@
 import { useShelf } from '../store';
 import { api } from '../api';
 import { ThemePicker } from './ThemePicker';
+import { WindowControls } from './WindowControls';
 
 export function Header() {
   const repos = useShelf((s) => s.repos.length);
@@ -18,7 +19,7 @@ export function Header() {
   };
 
   return (
-    <header className="hdr">
+    <header className={`hdr ${window.desktop ? 'desktop' : ''}`}>
       <div className="hdr-brand">
         <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true">
           <rect x="4" y="6" width="6" height="20" rx="1" fill="#3f5f4a" />
@@ -35,6 +36,9 @@ export function Header() {
         <span className="status muted" title={githubAvailable ? `GitHub metadata via gh as ${githubLogin}` : 'GitHub data unavailable: run gh auth login'}>
           {githubAvailable ? 'GitHub · connected' : 'GitHub data unavailable'}
         </span>
+        <button className="btn small primary" onClick={() => openDialog({ kind: 'create' })} title="git init a new repo on one of your shelves">
+          + New repo
+        </button>
         <ThemePicker />
         <button className="link" onClick={rescan}>
           Rescan
@@ -48,6 +52,7 @@ export function Header() {
         <span className="hdr-stat">
           <b>{shelves}</b> shelves
         </span>
+        <WindowControls />
       </nav>
     </header>
   );

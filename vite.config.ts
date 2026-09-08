@@ -15,6 +15,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    // dist/ also holds server.cjs (desktop widget); keep it when only the UI rebuilds
+    emptyOutDir: false,
     sourcemap: false,
     chunkSizeWarningLimit: 1500,
   },

@@ -25,6 +25,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npx vite build
+      - run: npm run build:server
 
   e2e:
     name: Playwright e2e

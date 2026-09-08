@@ -1,14 +1,15 @@
 import { create } from 'zustand';
-import type { AppState, Repo, Shelf } from './types';
+import type { AppState, Repo, RepoPages, Shelf } from './types';
 import { api, ApiError, subscribeEvents } from './api';
 import { matches, type Filter } from './derive';
 import { applyThemeCss, loadThemeId, saveThemeId, themeById } from './themes';
 
-export type DialogKind = 'move' | 'rename' | 'mkdir' | 'shelves' | 'clone' | 'visibility' | 'delete';
+export type DialogKind = 'move' | 'rename' | 'mkdir' | 'shelves' | 'clone' | 'visibility' | 'delete' | 'create';
 
 export interface Dialog {
   kind: DialogKind;
   repoId?: string;
+  shelfId?: string;
   targetShelfId?: string;
   visibility?: 'public' | 'private';
 }
@@ -64,6 +65,8 @@ export interface ShelfState {
   orbit: { yaw: number; pitch: number };
   focus: { x: number; y: number } | null;
   themeId: string;
+  pages: Record<string, RepoPages>;
+  setPages: (repoId: string, pages: RepoPages) => void;
 
   load: () => Promise<void>;
   applyState: (s: AppState) => void;
@@ -134,6 +137,8 @@ export const useShelf = create<ShelfState>()((set, get) => ({
   orbit: { yaw: 0, pitch: 0 },
   focus: null,
   themeId: loadThemeId(),
+  pages: {},
+  setPages: (repoId, pages) => set((st) => ({ pages: { ...st.pages, [repoId]: pages } })),
 
   async load() {
     try {
@@ -147,6 +152,7 @@ export const useShelf = create<ShelfState>()((set, get) => ({
 
   applyState(s) {
     const selected = get().selectedRepoId;
+    set({ pages: {} });
     const visible = s.shelves.filter((sh) => !sh.hidden || get().secretRevealed);
     set({
       allShelves: s.shelves,

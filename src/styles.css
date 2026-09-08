@@ -372,16 +372,16 @@ code {
 /* Detail panel: an open book page in its own pane beside the shelf */
 .panel {
   position: relative;
-  flex: 0 0 min(440px, 42%);
-  width: min(440px, 42%);
-  min-width: 300px;
+  flex: 0 0 min(820px, 58%);
+  width: min(820px, 58%);
+  min-width: 320px;
   background: var(--paper);
   border-left: 1px solid var(--line);
-  padding: 28px 28px 18px 40px;
+  padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow: auto;
+  flex-direction: row;
+  gap: 0;
+  overflow: hidden;
   z-index: 5;
   animation: slide-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   background-image:
@@ -1146,4 +1146,272 @@ code {
 }
 .btn.danger-outline:hover:not(:disabled) {
   background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+
+/* Open book: two pages side by side */
+.book-spread {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.book-left,
+.book-right {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 26px 24px 16px 30px;
+  position: relative;
+}
+.book-left {
+  border-right: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  background-image: linear-gradient(270deg, color-mix(in srgb, var(--ink) 10%, transparent), transparent 26px);
+}
+.book-right {
+  padding-left: 26px;
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--ink) 10%, transparent), transparent 26px);
+}
+.book-right .page-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+.chapters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+.chapter {
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 12px;
+  color: var(--muted);
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+.chapter em {
+  font-style: normal;
+  font-size: 10.5px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 999px;
+  padding: 0 5px;
+}
+.chapter:hover {
+  color: var(--ink);
+}
+.chapter.on {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+  font-weight: 600;
+}
+.page-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 14px 0;
+}
+.page-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.plist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.plist li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'a b' 'a c';
+  column-gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--ink) 10%, transparent);
+  font-size: 13px;
+  align-items: baseline;
+}
+.plist li .sha,
+.plist li .ficon {
+  grid-area: a;
+}
+.plist li .ptitle {
+  grid-area: b;
+  color: var(--ink);
+  text-decoration: none;
+  word-break: break-word;
+}
+.plist li a.ptitle:hover {
+  text-decoration: underline;
+}
+.plist li small {
+  grid-area: c;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.plist.files li {
+  grid-template-areas: 'a b';
+  padding: 5px 0;
+}
+.sha {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.ficon {
+  width: 14px;
+  height: 12px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 20%, transparent);
+  display: inline-block;
+  align-self: center;
+}
+.ficon.dir {
+  background: #d9b545;
+}
+.readme {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  word-break: break-word;
+}
+.readme h1,
+.readme h2,
+.readme h3 {
+  font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 18px 0 6px;
+  line-height: 1.2;
+}
+.readme h1 {
+  font-size: 22px;
+}
+.readme h2 {
+  font-size: 18px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+}
+.readme h3 {
+  font-size: 15px;
+}
+.readme p,
+.readme ul,
+.readme ol {
+  margin: 8px 0;
+}
+.readme pre {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.readme code {
+  font-size: 12px;
+}
+.readme pre code {
+  background: none;
+  padding: 0;
+}
+.readme img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+.readme table {
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.readme th,
+.readme td {
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+}
+.readme a {
+  color: var(--accent);
+}
+.readme blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+}
+.radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.radio-row .check {
+  margin-top: 4px;
+}
+.btn.small {
+  padding: 5px 11px;
+  font-size: 12px;
+  border-radius: 999px;
+}
+@media (max-width: 1000px) {
+  .panel {
+    flex-basis: min(560px, 52%);
+    width: min(560px, 52%);
+  }
+  .book-spread {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    overflow: auto;
+  }
+  .book-left {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    background-image: none;
+  }
+  .book-right {
+    background-image: none;
+  }
+}
+
+/* Desktop widget chrome: the header doubles as the window drag handle */
+.hdr.desktop {
+  -webkit-app-region: drag;
+  padding-right: 8px;
+}
+.hdr.desktop button,
+.hdr.desktop .theme-picker,
+.hdr.desktop select,
+.hdr.desktop a {
+  -webkit-app-region: no-drag;
+}
+.winctl {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 6px;
+  -webkit-app-region: no-drag;
+}
+.winctl button {
+  width: 34px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.winctl button:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+.winctl button.close:hover {
+  background: var(--red);
+  color: #fff;
 }

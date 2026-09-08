@@ -346,3 +346,67 @@ export async function deleteGitHubRepo(repo: Repo, confirmName: string, runner: 
   const r = await runner('gh', ['repo', 'delete', slug, '--yes'], { timeoutMs: 60_000 });
   if (r.code !== 0) throw ghFailure('Deleting', r);
 }
+
+export interface CreateRepoOptions {
+  description?: string;
+  /** Also create the repo on GitHub under the signed-in account and push. */
+  github?: 'public' | 'private' | null;
+}
+
+export interface CreateRepoResult {
+  path: string;
+  url: string | null;
+  /** Set when the local repo was created but the GitHub step failed. */
+  warning?: string;
+}
+
+/** `git init` a brand-new repo on a folder shelf, with a README and an initial commit. */
+export async function createRepo(
+  target: ShelfConfigEntry,
+  name: string,
+  opts: CreateRepoOptions = {},
+  runner: Runner = execRunner,
+  login: string | null = null,
+): Promise<CreateRepoResult> {
+  if (!validRepoName(name)) {
+    throw new ActionError(400, 'invalid_name', 'Name may only contain letters, numbers, dots, dashes and underscores (max 100).');
+  }
+  if (!target.path) throw new ActionError(400, 'link_shelf', 'Choose a folder shelf to create the repo in.');
+  if (!exists(target.path)) throw new ActionError(404, 'not_found', 'Target shelf folder does not exist.');
+  if (opts.github && !login) throw new ActionError(401, 'gh_unavailable', 'GitHub CLI is not signed in. Run `gh auth login` or create the repo locally only.');
+  const dest = path.join(path.resolve(target.path), name);
+  if (exists(dest)) throw new ActionError(409, 'exists', `"${name}" already exists on that shelf.`);
+
+  const description = (opts.description ?? '').trim();
+  try {
+    await fs.mkdir(dest, { recursive: true });
+    const title = name.replace(/[-_.]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    await fs.writeFile(path.join(dest, 'README.md'), `# ${title}\n${description ? `\n${description}\n` : ''}`, 'utf8');
+    await fs.writeFile(path.join(dest, '.gitignore'), 'node_modules/\ndist/\n.env\n.DS_Store\nThumbs.db\n', 'utf8');
+  } catch (err) {
+    throw mapFsError(err, `"${name}"`);
+  }
+  const g = async (args: string[]) => {
+    const r = await runner('git', args, { cwd: dest, timeoutMs: 60_000 });
+    if (r.code !== 0) throw new ActionError(500, 'git_failed', `git ${args[0]} failed: ${(r.stderr || r.stdout).trim().split('\n').pop() ?? ''}`);
+    return r;
+  };
+  try {
+    await g(['init', '-q', '-b', 'main']);
+    await g(['add', '-A']);
+    await g(['-c', 'user.useConfigOnly=false', 'commit', '-q', '-m', 'Initial commit']);
+  } catch (err) {
+    await fs.rm(dest, { recursive: true, force: true }).catch(() => undefined);
+    throw err;
+  }
+
+  if (!opts.github) return { path: dest, url: null };
+  const args = ['repo', 'create', `${login}/${name}`, `--${opts.github}`, '--source', dest, '--remote', 'origin', '--push'];
+  if (description) args.push('--description', description);
+  const r = await runner('gh', args, { timeoutMs: 120_000 });
+  if (r.code !== 0) {
+    const last = (r.stderr || r.stdout).trim().split('\n').filter(Boolean).pop() ?? 'unknown error';
+    return { path: dest, url: null, warning: `Created locally, but GitHub step failed: ${last}` };
+  }
+  return { path: dest, url: `https://github.com/${login}/${name}` };
+}

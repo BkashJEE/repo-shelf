@@ -1,6 +1,6 @@
 {
   "name": "repo-shelf",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Your git repos as books on a 3D bookshelf. Browse, search, move, rename, open.",
   "license": "MIT",
@@ -35,12 +35,21 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/server.cjs --log-level=warning",
+    "build:desktop": "npm run build && npm run build:server",
+    "desktop": "npm run build:desktop && electron .",
+    "desktop:dev": "cross-env SHELF_WEB_URL=http://127.0.0.1:5177/ electron .",
+    "dist:win": "npm run build:desktop && electron-builder --win nsis portable",
+    "dist:mac": "npm run build:desktop && electron-builder --mac dmg",
+    "dist:linux": "npm run build:desktop && electron-builder --linux AppImage"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
+    "dompurify": "^3.4.15",
     "express": "^5.2.1",
+    "marked": "^16.4.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "three": "^0.185.1",
@@ -56,6 +65,9 @@
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.13",
     "typescript": "^5.9.3",
     "vite": "^8.2.2",
@@ -63,5 +75,45 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true
+  },
+  "main": "desktop/main.cjs",
+  "build": {
+    "appId": "app.reposhelf.desktop",
+    "productName": "repo shelf",
+    "artifactName": "repo-shelf-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**",
+      "dist/**",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg"
+      ],
+      "hardenedRuntime": false
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    }
   }
 }

@@ -8,9 +8,28 @@ Built with React Three Fiber, Express, and `gh`. Runs on your machine only. Wind
 
 ![repo shelf](docs/media/screenshot-shelf.png)
 
+| The library door on your desktop | … swings open | … into the shelf |
+| --- | --- | --- |
+| ![door](docs/media/desktop-door.png) | ![door open](docs/media/desktop-door-open.png) | ![shelf window](docs/media/desktop-shelf.png) |
+
 | Open a book (page beside the shelf) | Zoomed out, every shelf | Midnight theme, modern case | Phone |
 | --- | --- | --- | --- |
 | ![open](docs/media/screenshot-open.png) | ![zoom out](docs/media/screenshot-zoom-out.png) | ![midnight](docs/media/screenshot-midnight.png) | ![mobile](docs/media/screenshot-mobile-open.png) |
+
+## Desktop widget
+
+A small **library door** sits on your desktop (always on top, drag it anywhere). Click it: the doors swing open and the bookshelf window appears. Close the shelf and you are back at the door. Everything you do there is real: move, rename, create folders, create repos, clone, change visibility, all against your actual git folders and your GitHub account.
+
+```bash
+npm run desktop        # build once, then launch the widget
+npm run dist:win       # Windows installer + portable exe in release/
+npm run dist:mac       # macOS .dmg (run on a Mac)
+npm run dist:linux     # AppImage
+```
+
+- Tray icon with **Open the shelf / Show the door / Quit**. `Ctrl+Shift+L` (`⌘⇧L` on macOS) toggles the shelf from anywhere.
+- The widget starts its own local server on the first free port from 4877 and keeps `shelf.config.json` in your user data folder once installed.
+- `npm run desktop:dev` points the widget at the Vite dev server for hot reload while you work on the UI.
 
 ## What a book tells you
 
@@ -35,6 +54,7 @@ From the detail panel or by dragging:
 - **New folder** inside a repo, with an optional `.gitkeep`. Paths are confined to the repo.
 - **Open** in VS Code, a terminal (Windows Terminal, Terminal.app, or your Linux default), the file manager, or the GitHub page.
 - **Clone** a link or GitHub book onto any of your shelves with `git clone`.
+- **Create** a brand-new repo on a shelf: `git init`, README, `.gitignore`, first commit, and optionally `gh repo create --push` as public or private.
 - **Make public / private**, **archive**, **delete** repos on your GitHub account from their books on the GitHub shelves.
 
 Every action is logged to `.cache/actions.log`. Nothing is ever deleted.
@@ -58,6 +78,10 @@ npm start
 ```
 
 Then open http://127.0.0.1:4877.
+
+## Opening a book
+
+Click a book and it slides out, turns, and its cover swings open on a hinge. Beside the shelf a two-page spread opens: the left page is the repo (facts, actions), the right page turns through **README** (rendered), **Commits**, **Issues**, **Pull requests**, **Files** and **Branches**. Local repos read from disk and git; GitHub books read from the API. Rows longer than the case are clipped at its sides and paged with the arrows.
 
 ## GitHub account shelves
 

@@ -3,7 +3,7 @@ import type { Repo } from '../types';
 import { bookColor, displayName, hasGoldBand, hasRedTab, isStale, languageOf } from '../derive';
 import type { Theme } from '../themes';
 
-const cache = new Map<string, { key: string; spine: THREE.CanvasTexture; cover: THREE.CanvasTexture }>();
+const cache = new Map<string, { key: string; spine: THREE.CanvasTexture; cover: THREE.CanvasTexture; page: THREE.CanvasTexture }>();
 
 function visualKey(r: Repo, staleDays: number): string {
   return [r.name, languageOf(r), r.dirtyCount > 0, r.github?.stars ?? 0, r.virtual ? 'link' : isStale(r, staleDays), r.github?.description ?? '', r.visibility, r.archived].join('|');
@@ -230,6 +230,68 @@ function drawCover(r: Repo, staleDays: number): HTMLCanvasElement {
   return canvas;
 }
 
+/** First page inside the cover: title, description, a few facts. Shown when the book opens. */
+function drawPage(r: Repo): HTMLCanvasElement {
+  const W = 512;
+  const H = 768;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#f4efe3';
+  ctx.fillRect(0, 0, W, H);
+  // faint ruled lines + gutter shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.045)';
+  for (let y = 120; y < H - 60; y += 26) ctx.fillRect(56, y, W - 112, 1);
+  const g = ctx.createLinearGradient(0, 0, 40, 0);
+  g.addColorStop(0, 'rgba(0,0,0,0.22)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 40, H);
+
+  ctx.fillStyle = '#2a2622';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  const title = displayName(r.name);
+  let px = 44;
+  ctx.font = `700 ${px}px ${SERIF}`;
+  let lines = wrap(ctx, title, W - 140);
+  while (lines.length > 3 && px > 24) {
+    px -= 4;
+    ctx.font = `700 ${px}px ${SERIF}`;
+    lines = wrap(ctx, title, W - 140);
+  }
+  let y = 90;
+  for (const line of lines.slice(0, 3)) {
+    ctx.fillText(line, W / 2, y);
+    y += px * 1.15;
+  }
+  ctx.font = `500 16px ${SANS}`;
+  ctx.fillStyle = '#7a7268';
+  ctx.fillText((r.repoSlug ?? r.name).toUpperCase(), W / 2, y + 6);
+  y += 44;
+  const desc = r.github?.description ?? '';
+  if (desc) {
+    ctx.font = `400 19px ${SANS}`;
+    ctx.fillStyle = '#3f3a34';
+    for (const line of wrap(ctx, desc, W - 150).slice(0, 6)) {
+      ctx.fillText(line, W / 2, y);
+      y += 26;
+    }
+  }
+  ctx.font = `500 15px ${SANS}`;
+  ctx.fillStyle = '#7a7268';
+  const facts: string[] = [];
+  if (r.commitCount) facts.push(`${r.commitCount} commits`);
+  if (r.branch) facts.push(`branch ${r.branch}`);
+  if (r.github?.stars) facts.push(`${r.github.stars.toLocaleString()} stars`);
+  if (r.visibility) facts.push(r.visibility);
+  ctx.fillText(facts.join('  ·  '), W / 2, H - 120);
+  ctx.font = `400 14px ${SANS}`;
+  ctx.fillText('README, commits, issues and pull requests are on the pages to the right', W / 2, H - 88);
+  return canvas;
+}
+
 function makeTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(canvas);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -240,15 +302,16 @@ function makeTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
   return t;
 }
 
-export function bookTextures(r: Repo, staleDays: number): { spine: THREE.CanvasTexture; cover: THREE.CanvasTexture } {
+export function bookTextures(r: Repo, staleDays: number): { spine: THREE.CanvasTexture; cover: THREE.CanvasTexture; page: THREE.CanvasTexture } {
   const key = visualKey(r, staleDays);
   const hit = cache.get(r.id);
   if (hit && hit.key === key) return hit;
   if (hit) {
     hit.spine.dispose();
     hit.cover.dispose();
+    hit.page.dispose();
   }
-  const entry = { key, spine: makeTexture(drawSpine(r, staleDays)), cover: makeTexture(drawCover(r, staleDays)) };
+  const entry = { key, spine: makeTexture(drawSpine(r, staleDays)), cover: makeTexture(drawCover(r, staleDays)), page: makeTexture(drawPage(r)) };
   cache.set(r.id, entry);
   return entry;
 }

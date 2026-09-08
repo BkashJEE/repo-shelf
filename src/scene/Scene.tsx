@@ -1,8 +1,23 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect } from 'react';
 import { Bookcase } from './Bookcase';
 import { CameraRig } from './CameraRig';
 import { useShelf } from '../store';
 import { themeById } from '../themes';
+
+/** Exposes the renderer for the desktop widget's self-check and for debugging (window.__r3f). */
+function SceneDebug() {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    (window as unknown as { __r3f?: unknown }).__r3f = {
+      snapshot: () => {
+        gl.render(scene, camera);
+        return gl.domElement.toDataURL('image/png');
+      },
+    };
+  }, [gl, scene, camera]);
+  return null;
+}
 
 export function Scene() {
   const select = useShelf((s) => s.select);
@@ -14,7 +29,7 @@ export function Scene() {
       dpr={[1, 2]}
       shadows
       camera={{ fov: 44, near: 0.1, far: 100, position: [0, 0, 12] }}
-      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', localClippingEnabled: true }}
       onPointerMissed={(e) => {
         const el = e.target as HTMLElement | null;
         if (el?.dataset?.orbited) {
@@ -47,6 +62,7 @@ export function Scene() {
       />
       <directionalLight position={[-7, 3, 6]} intensity={0.35} />
       <spotLight position={[0, 6, 14]} angle={0.9} penumbra={1} intensity={0.6} />
+      <SceneDebug />
       <CameraRig />
       <Bookcase />
     </Canvas>

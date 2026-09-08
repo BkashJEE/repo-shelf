@@ -179,6 +179,39 @@ describe('POST /api/repo/clone', () => {
   });
 });
 
+describe('pages and create', () => {
+  it('serves README, files, commits and branches for a disk repo', async () => {
+    const s = await getState();
+    const one = s.repos.find((r) => r.name === 'one')!;
+    const r = await fetch(`${base}/api/repo/${one.id}/pages`);
+    expect(r.status).toBe(200);
+    const pages = (await r.json()) as any;
+    expect(pages.source).toBe('disk');
+    expect(pages.readme).toContain('# one');
+    expect(pages.files.map((f: { name: string }) => f.name)).toContain('README.md');
+    expect(pages.commits.length).toBeGreaterThanOrEqual(2);
+    expect(pages.branches).toContain('main');
+    expect(pages.issues).toEqual([]);
+    expect((await fetch(`${base}/api/repo/nope/pages`)).status).toBe(404);
+  });
+
+  it('creates a repo on a shelf and lists it', async () => {
+    const s = await getState();
+    const a = s.shelves.find((x) => x.label === 'A')!;
+    const bad = await post('/api/repo/create', { shelfId: a.id, name: 'bad name' });
+    expect(bad.status).toBe(400);
+    const ok = await post('/api/repo/create', { shelfId: a.id, name: 'brand-new', description: 'made from the shelf' });
+    expect(ok.status).toBe(200);
+    expect(fs.existsSync(path.join(rootA, 'brand-new', '.git'))).toBe(true);
+    const after = await getState();
+    const created = after.repos.find((r) => r.name === 'brand-new')!;
+    expect(created.commitCount).toBe(1);
+    expect(created.shelfId).toBe(a.id);
+    const log = fs.readFileSync(path.join(tmp, '.cache', 'actions.log'), 'utf8');
+    expect(log).toContain('"action":"create"');
+  });
+});
+
 describe('SSE', () => {
   it('streams state:changed after a rescan', async () => {
     const ctrl = new AbortController();

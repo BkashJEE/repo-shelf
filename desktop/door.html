@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>repo shelf</title>
+    <style>
+      :root {
+        --wood: #5a3a24;
+        --wood-dark: #3b2416;
+        --wood-light: #7a5236;
+        --frame: #2a1a10;
+        --brass: #d5b04a;
+        --brass-dark: #8a6d1e;
+        --paper: #f3ecdc;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        user-select: none;
+      }
+      body {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        -webkit-app-region: drag;
+      }
+      .scene {
+        width: 200px;
+        height: 300px;
+        margin-bottom: 14px;
+        perspective: 900px;
+        position: relative;
+        filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.45));
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+      }
+      .frame {
+        position: absolute;
+        inset: 0;
+        border: 12px solid var(--frame);
+        border-bottom-width: 6px;
+        border-radius: 90px 90px 4px 4px;
+        background: linear-gradient(#1a1008, #0c0805);
+        box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9);
+        overflow: hidden;
+      }
+      /* glimpse of the library behind the doors */
+      .inside {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 50% 30%, #6d4a2f 0%, #3a2415 55%, #150c07 100%);
+      }
+      .inside .row {
+        position: absolute;
+        left: 8%;
+        right: 8%;
+        height: 32%;
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        padding: 0 4px 0;
+        border-bottom: 5px solid #8a5c38;
+      }
+      .inside .row:nth-child(1) {
+        top: 18%;
+      }
+      .inside .row:nth-child(2) {
+        top: 54%;
+      }
+      .inside .row i {
+        display: block;
+        flex: 0 0 auto;
+        width: 9px;
+        height: 70%;
+        border-radius: 1px 1px 0 0;
+        background: #2f5d8a;
+        box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.3);
+      }
+      .inside .row i:nth-child(3n) {
+        background: #a3452f;
+        height: 82%;
+      }
+      .inside .row i:nth-child(4n) {
+        background: #c9a227;
+        height: 62%;
+        width: 12px;
+      }
+      .inside .row i:nth-child(5n) {
+        background: #3b6e8f;
+        height: 76%;
+      }
+      .inside .row i:nth-child(7n) {
+        background: #4a6b3a;
+        width: 7px;
+      }
+      .glow {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 50% 40%, rgba(255, 214, 150, 0.35), transparent 60%);
+        opacity: 0;
+        transition: opacity 0.6s;
+      }
+      .doors {
+        position: absolute;
+        inset: 12px 12px 6px;
+        border-radius: 80px 80px 2px 2px;
+        overflow: visible;
+        transform-style: preserve-3d;
+      }
+      .door {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        background: linear-gradient(90deg, var(--wood-dark), var(--wood) 30%, var(--wood-light) 55%, var(--wood) 80%, var(--wood-dark));
+        box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35), inset 0 0 30px rgba(0, 0, 0, 0.35);
+        transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-style: preserve-3d;
+        backface-visibility: hidden;
+      }
+      .door::before,
+      .door::after {
+        content: '';
+        position: absolute;
+        left: 16%;
+        right: 16%;
+        border: 3px solid rgba(0, 0, 0, 0.35);
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+      }
+      .door::before {
+        top: 14%;
+        height: 30%;
+      }
+      .door::after {
+        bottom: 12%;
+        height: 32%;
+      }
+      .door.left {
+        left: 0;
+        border-radius: 80px 0 0 2px;
+        transform-origin: left center;
+      }
+      .door.right {
+        right: 0;
+        border-radius: 0 80px 2px 0;
+        transform-origin: right center;
+      }
+      .handle {
+        position: absolute;
+        top: 50%;
+        width: 8px;
+        height: 34px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, var(--brass-dark), var(--brass), var(--brass-dark));
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        transform: translateY(-50%);
+      }
+      .door.left .handle {
+        right: 8px;
+      }
+      .door.right .handle {
+        left: 8px;
+      }
+      .plaque {
+        position: absolute;
+        left: 50%;
+        top: 30px;
+        transform: translateX(-50%);
+        background: linear-gradient(#e6c65c, #b08a2a);
+        color: #3b2a08;
+        font-size: 9px;
+        letter-spacing: 0.28em;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 2px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        z-index: 3;
+        pointer-events: none;
+      }
+      .scene.open .door.left {
+        transform: rotateY(-118deg);
+      }
+      .scene.open .door.right {
+        transform: rotateY(118deg);
+      }
+      .scene.open .glow {
+        opacity: 1;
+      }
+      .scene:hover .door.left:not(.scene.open *) {
+        transform: rotateY(-8deg);
+      }
+      .scene:hover .door.right {
+        transform: rotateY(8deg);
+      }
+      .scene.open:hover .door.left {
+        transform: rotateY(-118deg);
+      }
+      .scene.open:hover .door.right {
+        transform: rotateY(118deg);
+      }
+      .label {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -2px;
+        text-align: center;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.85);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        letter-spacing: 0.02em;
+        pointer-events: none;
+      }
+      .menu {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        -webkit-app-region: no-drag;
+      }
+      body:hover .menu {
+        opacity: 1;
+      }
+      .menu button {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(20, 12, 6, 0.75);
+        color: #f3e6d0;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .menu button:hover {
+        background: rgba(60, 38, 20, 0.95);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="menu">
+      <button id="quit" title="Quit repo shelf">×</button>
+    </div>
+    <div class="scene" id="scene" title="Open the library (Ctrl+Shift+L)">
+      <div class="frame">
+        <div class="inside">
+          <div class="row"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="row"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="glow"></div>
+      </div>
+      <div class="doors">
+        <div class="door left"><span class="handle"></span></div>
+        <div class="door right"><span class="handle"></span></div>
+      </div>
+      <div class="plaque">LIBRARY</div>
+      <div class="label">repo shelf</div>
+    </div>
+    <script>
+      const scene = document.getElementById('scene');
+      let opening = false;
+      scene.addEventListener('click', () => {
+        if (opening) return;
+        opening = true;
+        scene.classList.add('open');
+        // Let the doors swing before the shelf window takes over.
+        setTimeout(() => window.desktop.openShelf(), 520);
+        setTimeout(() => {
+          scene.classList.remove('open');
+          opening = false;
+        }, 1400);
+      });
+      document.getElementById('quit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.desktop.quit();
+      });
+      window.desktop.onDoorState((state) => {
+        if (state === 'open') scene.classList.add('open');
+        if (state === 'closing') {
+          scene.classList.add('open');
+          requestAnimationFrame(() => setTimeout(() => scene.classList.remove('open'), 60));
+        }
+      });
+    </script>
+  </body>
+</html>

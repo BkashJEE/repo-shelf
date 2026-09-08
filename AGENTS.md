@@ -23,6 +23,8 @@ Run `npm test` and `npm run typecheck` before you consider a task done. Add test
 
 - `server/` Node API. `scanner.ts` (find repos, read git), `github.ts` (`gh` enrichment, cached), `actions.ts` (move/rename/mkdir/open), `pathguard.ts` (all path checks), `app.ts` (routes, SSE), `config.ts` (`shelf.config.json`).
 - `src/` UI. `store.ts` is the single zustand store. `derive.ts` holds pure functions (book size/color, filters, `displayName`). `themes.ts` defines color themes for page + scene. `scene/` is the 3D part (`Bookcase`, `Shelf`, `Book`, `CameraRig`, `textures.ts` canvas spines/covers). `ui/` is the HTML overlay.
+- `desktop/` is the Electron widget: `main.cjs` (door window, shelf window, tray, shortcut, in-process server from `dist/server.cjs`), `preload.cjs`, `door.html`. Plain CommonJS, no build step. `npm run build:server` bundles the API with esbuild.
+- `server/pages.ts` builds what an open book shows (README, files, commits, branches, issues, PRs) with a 5-minute cache; `src/ui/BookPages.tsx` renders it.
 - `tests/server/helpers.ts` creates real git repos in a temp dir; use it instead of mocking git.
 - `docs/design/` has the original design spec and plan.
 
@@ -47,10 +49,18 @@ Run `npm test` and `npm run typecheck` before you consider a task done. Add test
 - Link shelves: `ShelfConfigEntry.links` makes virtual books (`Repo.virtual`, `path: ''`). Server actions refuse them with `400 virtual`; only `open github` and `clone` apply. `hidden: true` shelves are revealed client-side by typing `hermes` (see `revealSecret` in the store).
 - Bookcase styles: `caseStyle` in the store (`classic | modern | floating`) toggles geometry in `Bookcase.tsx` / `Shelf.tsx`.
 
+## Desktop widget rules
+
+- Keep `desktop/main.cjs` dependency-free (Electron + Node built-ins only) so `electron .` works without a build.
+- The renderer never gets Node access: `contextIsolation: true`, `sandbox: true`, and the only bridge is `desktop/preload.cjs`.
+- Test with `electron . --capture <dir>`: it saves PNGs of the door and shelf plus a WebGL snapshot and quits.
+
 ## Good next tasks
 
 Pick one, keep the PR focused:
 
+- **App icon**: draw a proper icon (the library door) for the tray, the window, and installers (`build.win.icon`, `build.mac.icon`).
+- **Auto-start**: launch the door at login (`app.setLoginItemSettings`), opt-in from the tray menu.
 - **Favorites / pins**: star a book from the panel, persist in `shelf.config.json`, show a small ribbon on the spine, add a "Pinned" chip.
 - **Clone any URL**: today only link books and repos with a remote can be cloned; add a dialog that takes an arbitrary GitHub URL and streams `git clone` progress over SSE.
 - **Sort within a shelf**: name / last commit / size / commits, stored per shelf, animated re-layout.

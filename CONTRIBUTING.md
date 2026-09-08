@@ -11,6 +11,8 @@ npm install
 npm run dev
 ```
 
+Desktop widget: `npm run desktop` (builds the UI and the server bundle, then launches Electron). `npm run desktop:dev` uses the Vite dev server so UI edits hot-reload inside the widget.
+
 Open http://127.0.0.1:5177. The API runs on port 4877. On first start a `shelf.config.json` is written with your `Developer`, `Documents`, and home folders as shelves; edit it or use the **Shelves** button.
 
 Requirements: Node 20 or newer, git. Optional: GitHub CLI (`gh auth login`) for descriptions, stars, and topics. Works on Windows, macOS and Linux; CI runs all three.

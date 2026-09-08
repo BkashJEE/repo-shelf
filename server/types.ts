@@ -94,3 +94,38 @@ export interface AuditEntry {
   ok: boolean;
   error?: string;
 }
+
+export interface PageCommit {
+  sha: string;
+  author: string;
+  date: string;
+  message: string;
+}
+
+export interface PageIssue {
+  number: number;
+  title: string;
+  state: string;
+  url: string;
+  updatedAt: string;
+  author: string;
+  labels: string[];
+  draft: boolean;
+}
+
+export interface PageFile {
+  name: string;
+  type: 'file' | 'dir';
+}
+
+/** What the open book shows on its pages. */
+export interface RepoPages {
+  readme: string | null;
+  files: PageFile[];
+  commits: PageCommit[];
+  branches: string[];
+  issues: PageIssue[];
+  pulls: PageIssue[];
+  source: 'disk' | 'github' | 'none';
+  fetchedAt: string;
+}

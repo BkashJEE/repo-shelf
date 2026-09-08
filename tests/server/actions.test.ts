@@ -4,7 +4,7 @@ import path from 'node:path';
 import { makeTempRoot, makeRepo, rm } from './helpers';
 import { scanRepo } from '../../server/scanner';
 import { shelfId } from '../../server/config';
-import { ActionError, moveRepo, renameRepo, mkdirInRepo, openRepo, cloneRepo, setVisibility, setArchived, deleteGitHubRepo } from '../../server/actions';
+import { ActionError, moveRepo, renameRepo, mkdirInRepo, openRepo, cloneRepo, setVisibility, setArchived, deleteGitHubRepo, createRepo } from '../../server/actions';
 import { linkRepo } from '../../server/scanner';
 import { appendAudit, readAudit } from '../../server/audit';
 import type { Runner } from '../../server/git';
@@ -301,5 +301,54 @@ describe('GitHub account actions', () => {
     expect(calls[0]).toEqual(['gh', 'repo', 'delete', 'me/thing', '--yes']);
     const noScope: Runner = async () => ({ code: 1, stdout: '', stderr: 'HTTP 403: Must have admin rights... delete_repo scope' });
     await expectAction(deleteGitHubRepo(ghBook(), 'thing', noScope, 'me'), 403, 'scope');
+  });
+});
+
+describe('createRepo', () => {
+  const gitOnly: Runner = async (cmd, args, opts) => {
+    if (cmd === 'gh') return { code: 1, stdout: '', stderr: 'gh should not be called' };
+    const { execRunner } = await import('../../server/git');
+    return execRunner(cmd, args, { ...opts, cwd: opts?.cwd });
+  };
+
+  it('git inits a new repo with README, .gitignore and one commit', async () => {
+    const r = await createRepo(shelves[0], 'fresh-idea', { description: 'Try things' }, gitOnly, null);
+    expect(r.path).toBe(path.join(rootA, 'fresh-idea'));
+    expect(r.url).toBeNull();
+    expect(fs.existsSync(path.join(r.path, '.git'))).toBe(true);
+    expect(fs.readFileSync(path.join(r.path, 'README.md'), 'utf8')).toBe('# Fresh Idea\n\nTry things\n');
+    expect(fs.existsSync(path.join(r.path, '.gitignore'))).toBe(true);
+    const scanned = await scanRepo(r.path, 's');
+    expect(scanned.commitCount).toBe(1);
+    expect(scanned.branch).toBe('main');
+    expect(scanned.dirtyCount).toBe(0);
+  });
+
+  it('rejects bad names, collisions, link shelves, and GitHub without a login', async () => {
+    await expectAction(createRepo(shelves[0], 'bad name', {}, gitOnly, null), 400, 'invalid_name');
+    await makeRepo(rootA, 'taken');
+    await expectAction(createRepo(shelves[0], 'taken', {}, gitOnly, null), 409, 'exists');
+    await expectAction(createRepo({ label: 'L', links: [] }, 'x', {}, gitOnly, null), 400, 'link_shelf');
+    await expectAction(createRepo(shelves[0], 'x', { github: 'private' }, gitOnly, null), 401, 'gh_unavailable');
+    expect(fs.existsSync(path.join(rootA, 'x'))).toBe(false);
+  });
+
+  it('creates on GitHub with gh repo create --push and reports a warning when that fails', async () => {
+    const calls: string[][] = [];
+    const runner: Runner = async (cmd, args, opts) => {
+      if (cmd === 'gh') {
+        calls.push([cmd, ...args]);
+        return { code: 0, stdout: '', stderr: '' };
+      }
+      return gitOnly(cmd, args, opts);
+    };
+    const r = await createRepo(shelves[0], 'pushed', { github: 'private', description: 'd' }, runner, 'me');
+    expect(r.url).toBe('https://github.com/me/pushed');
+    expect(calls[0]).toEqual(['gh', 'repo', 'create', 'me/pushed', '--private', '--source', r.path, '--remote', 'origin', '--push', '--description', 'd']);
+    const failing: Runner = async (cmd, args, opts) => (cmd === 'gh' ? { code: 1, stdout: '', stderr: 'HTTP 422: name already exists' } : gitOnly(cmd, args, opts));
+    const r2 = await createRepo(shelves[0], 'pushed2', { github: 'public' }, failing, 'me');
+    expect(r2.url).toBeNull();
+    expect(r2.warning).toMatch(/name already exists/);
+    expect(fs.existsSync(path.join(r2.path, '.git'))).toBe(true);
   });
 });

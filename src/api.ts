@@ -1,4 +1,4 @@
-import type { AppState, OpenTarget, Repo } from './types';
+import type { AppState, OpenTarget, Repo, RepoPages } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -63,6 +63,9 @@ export const api = {
     post<ActionResponse>('/api/repo/visibility', { repoId, visibility }),
   setArchived: (repoId: string, archived: boolean) => post<ActionResponse>('/api/repo/archive', { repoId, archived }),
   deleteOnGitHub: (repoId: string, confirmName: string) => post<ActionResponse>('/api/repo/delete', { repoId, confirmName }),
+  pages: (repoId: string) => request<RepoPages>(`/api/repo/${encodeURIComponent(repoId)}/pages`),
+  create: (shelfId: string, name: string, description: string, github: 'public' | 'private' | null) =>
+    post<ActionResponse & { url: string | null; warning: string | null }>('/api/repo/create', { shelfId, name, description, github }),
   addShelf: (label: string, path: string) => post<AppState>('/api/shelves', { label, path }),
   removeShelf: (id: string) => request<AppState>(`/api/shelves/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

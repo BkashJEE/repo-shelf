@@ -15,11 +15,13 @@ import {
   moveRepo,
   openRepo,
   renameRepo,
+  createRepo,
   setArchived,
   setVisibility,
   type Spawner,
 } from './actions.js';
 import { appendAudit } from './audit.js';
+import { PagesCache, buildPages } from './pages.js';
 import { EventHub } from './events.js';
 
 export interface AppDeps {
@@ -62,6 +64,7 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
   let shelves: Shelf[] = [];
   let repos: Repo[] = [];
   const hub = new EventHub();
+  const pagesCache = new PagesCache();
 
   const state = (): AppState => ({
     shelves,
@@ -90,6 +93,7 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
   }
 
   async function rescan(onlyShelf?: string): Promise<void> {
+    pagesCache.clear();
     if (onlyShelf) {
       const entry = entryById(onlyShelf);
       if (!entry) return;
@@ -325,6 +329,48 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
       await refreshGithubShelves();
       hub.broadcast('state:changed', { reason: 'delete' });
       res.json({ ok: true, state: state() });
+    }),
+  );
+
+  api.get(
+    '/repo/:id/pages',
+    wrap(async (req, res) => {
+      const repo = repos.find((r) => r.id === req.params.id);
+      if (!repo) throw new ActionError(404, 'not_found', 'Unknown repo.');
+      const pages = await pagesCache.get(repo, () => buildPages(repo, runner, enricher.available()));
+      res.json(pages);
+    }),
+  );
+
+  api.post(
+    '/repo/create',
+    wrap(async (req, res) => {
+      const shelfIdArg = typeof req.body?.shelfId === 'string' ? req.body.shelfId : '';
+      const target = entryById(shelfIdArg);
+      if (!target) throw new ActionError(404, 'not_found', 'Unknown shelf.');
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      const description = typeof req.body?.description === 'string' ? req.body.description : '';
+      const github = req.body?.github === 'public' || req.body?.github === 'private' ? req.body.github : null;
+      let result;
+      try {
+        result = await createRepo(target, name, { description, github }, runner, enricher.login());
+        await appendAudit(auditFile, { action: 'create', repoId: 'new', path: result.path, params: { name, github }, ok: true });
+      } catch (err) {
+        await appendAudit(auditFile, {
+          action: 'create',
+          repoId: 'new',
+          path: path.join(target.path ?? '', name),
+          params: { name, github },
+          ok: false,
+          error: err instanceof Error ? `${(err as ActionError).code ?? 'error'}: ${err.message}` : String(err),
+        });
+        throw err;
+      }
+      pagesCache.clear();
+      await rescan(shelfIdArg);
+      if (github) await refreshGithubShelves();
+      hub.broadcast('state:changed', { reason: 'create' });
+      res.json({ ok: true, newPath: result.path, url: result.url, warning: result.warning ?? null, state: state() });
     }),
   );
 

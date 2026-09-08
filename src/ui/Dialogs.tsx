@@ -376,6 +376,93 @@ function ShelvesDialog() {
   );
 }
 
+function CreateRepoDialog() {
+  const dialog = useShelf((s) => s.dialog)!;
+  const shelves = useShelf((s) => s.shelves.filter((sh) => sh.kind === 'disk'));
+  const githubAvailable = useShelf((s) => s.githubAvailable);
+  const githubLogin = useShelf((s) => s.githubLogin);
+  const close = useShelf((s) => s.closeDialog);
+  const busy = useShelf((s) => s.busy);
+  const runAction = useShelf((s) => s.runAction);
+  const toast = useShelf((s) => s.toast);
+  const [shelf, setShelf] = useState(dialog.shelfId ?? shelves[0]?.id ?? '');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [github, setGithub] = useState<'none' | 'private' | 'public'>(githubAvailable ? 'private' : 'none');
+  const ok = validName(name) && Boolean(shelf);
+  const to = shelves.find((s) => s.id === shelf);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!ok) return;
+    try {
+      await runAction(`Created ${name}`, async () => {
+        const r = await api.create(shelf, name, description, github === 'none' ? null : github);
+        if (r.warning) toast('error', r.warning);
+        return r;
+      });
+      close();
+    } catch {
+      /* toast shown */
+    }
+  };
+
+  return (
+    <Modal title="New repo" onClose={close}>
+      <form onSubmit={submit}>
+        <label className="lbl">Shelf</label>
+        <select value={shelf} onChange={(e) => setShelf(e.target.value)} className="field" disabled={busy}>
+          {shelves.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label} · {s.path}
+            </option>
+          ))}
+        </select>
+        <label className="lbl" style={{ marginTop: 12 }}>
+          Name
+        </label>
+        <input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="my-next-thing" autoFocus disabled={busy} spellCheck={false} />
+        <p className={`modal-note ${name && !validName(name) ? 'bad' : ''}`}>Letters, numbers, dots, dashes and underscores.</p>
+        <label className="lbl" style={{ marginTop: 12 }}>
+          Description (optional)
+        </label>
+        <input className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is it for?" disabled={busy} />
+        <label className="lbl" style={{ marginTop: 12 }}>
+          GitHub
+        </label>
+        <div className="radio-row">
+          <label className="check">
+            <input type="radio" name="gh" checked={github === 'none'} onChange={() => setGithub('none')} disabled={busy} /> Local only
+          </label>
+          <label className="check" title={githubAvailable ? '' : 'Run gh auth login first'}>
+            <input type="radio" name="gh" checked={github === 'private'} onChange={() => setGithub('private')} disabled={busy || !githubAvailable} /> Private on GitHub
+          </label>
+          <label className="check" title={githubAvailable ? '' : 'Run gh auth login first'}>
+            <input type="radio" name="gh" checked={github === 'public'} onChange={() => setGithub('public')} disabled={busy || !githubAvailable} /> Public on GitHub
+          </label>
+        </div>
+        <p className="modal-note">
+          Runs <code>git init</code> in <code>{to ? `${to.path}` : '…'}</code> with a README and an initial commit
+          {github !== 'none' && githubLogin ? (
+            <>
+              , then <code>gh repo create {githubLogin}/{name || '…'} --{github} --push</code>
+            </>
+          ) : null}
+          .
+        </p>
+        <div className="modal-actions">
+          <button type="button" className="btn" onClick={close} disabled={busy}>
+            Cancel
+          </button>
+          <button type="submit" className="btn primary" disabled={!ok || busy}>
+            {busy ? 'Creating…' : 'Create repo'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export function Dialogs() {
   const kind = useShelf((s) => s.dialog?.kind ?? null);
   if (kind === 'move') return <MoveDialog />;
@@ -383,6 +470,7 @@ export function Dialogs() {
   if (kind === 'mkdir') return <MkdirDialog />;
   if (kind === 'shelves') return <ShelvesDialog />;
   if (kind === 'clone') return <CloneDialog />;
+  if (kind === 'create') return <CreateRepoDialog />;
   if (kind === 'visibility') return <VisibilityDialog />;
   if (kind === 'delete') return <DeleteDialog />;
   return null;
