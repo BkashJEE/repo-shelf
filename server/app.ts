@@ -170,6 +170,8 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
     '/rescan',
     wrap(async (req, res) => {
       const id = typeof req.body?.shelfId === 'string' ? req.body.shelfId : undefined;
+      // A user-triggered rescan should always ask GitHub again.
+      enricher.invalidateLists();
       await rescan(id);
       hub.broadcast('state:changed', { reason: 'rescan' });
       res.json({ shelves, repos });
