@@ -100,20 +100,26 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "artifactName": "repo-shelf-${version}-windows-setup.${ext}"
     },
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
         "dmg"
       ],
-      "hardenedRuntime": false
+      "hardenedRuntime": false,
+      "artifactName": "repo-shelf-${version}-mac-${arch}.${ext}"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "category": "Development"
+      "category": "Development",
+      "artifactName": "repo-shelf-${version}-linux-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "repo-shelf-${version}-windows-portable.${ext}"
     }
   }
 }

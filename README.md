@@ -27,6 +27,8 @@ npm run dist:mac       # macOS .dmg (run on a Mac)
 npm run dist:linux     # AppImage
 ```
 
+If Windows Defender blocks the build with `EPERM ... win-unpacked.tmp`, build to another drive: `npx electron-builder --win --config.directories.output=D:/repo-shelf-release`.
+
 - Tray icon with **Open the shelf / Show the door / Quit**. `Ctrl+Shift+L` (`⌘⇧L` on macOS) toggles the shelf from anywhere.
 - The widget starts its own local server on the first free port from 4877 and keeps `shelf.config.json` in your user data folder once installed.
 - `npm run desktop:dev` points the widget at the Vite dev server for hot reload while you work on the UI.
