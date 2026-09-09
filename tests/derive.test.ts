@@ -31,6 +31,7 @@ function repo(over: Partial<Repo> = {}): Repo {
     linkUrl: null,
     visibility: null,
     archived: false,
+    createdAt: null,
     branch: 'main',
     lastCommitAt: '2026-09-01T00:00:00Z',
     commitCount: 10,
@@ -55,7 +56,7 @@ describe('dimensions', () => {
   });
   it('bookThickness clamps and grows with size', () => {
     expect(bookThickness(0)).toBe(MIN_THICKNESS);
-    expect(bookThickness(999)).toBeCloseTo(0.52, 2);
+    expect(bookThickness(999)).toBeCloseTo(0.6, 2);
     expect(bookThickness(1e12)).toBe(MAX_THICKNESS);
   });
 });

@@ -24,6 +24,8 @@ Run `npm test` and `npm run typecheck` before you consider a task done. Add test
 - `server/` Node API. `scanner.ts` (find repos, read git), `github.ts` (`gh` enrichment, cached), `actions.ts` (move/rename/mkdir/open), `pathguard.ts` (all path checks), `app.ts` (routes, SSE), `config.ts` (`shelf.config.json`).
 - `src/` UI. `store.ts` is the single zustand store. `derive.ts` holds pure functions (book size/color, filters, `displayName`). `themes.ts` defines color themes for page + scene. `scene/` is the 3D part (`Bookcase`, `Shelf`, `Book`, `CameraRig`, `textures.ts` canvas spines/covers). `ui/` is the HTML overlay.
 - `desktop/` is the Electron widget: `main.cjs` (door window, shelf window, tray, shortcut, in-process server from `dist/server.cjs`), `preload.cjs`, `door.html`. Plain CommonJS, no build step. `npm run build:server` bundles the API with esbuild.
+- `server/publish.ts` builds the static, read-only site (`buildStaticSite`: copies `dist-static`, embeds sanitized data as `shelf-data.js`) and pushes it to GitHub Pages (`publishSite`). `src/static.ts` detects a published page (`window.__SHELF_STATIC`) and the store then loads from it with `readOnly` set.
+- `src/share/capture.ts` renders shelfies and GIFs straight from the WebGL canvas (`window.__r3f` exposes gl/scene/camera/advance) and encodes GIFs with `gifenc`. `src/ui/Rewind.tsx` drives the on-screen rewind through `store.timeline`.
 - `server/pages.ts` builds what an open book shows (README, files, commits, branches, issues, PRs) with a 5-minute cache; `src/ui/BookPages.tsx` renders it.
 - `tests/server/helpers.ts` creates real git repos in a temp dir; use it instead of mocking git.
 - `docs/design/` has the original design spec and plan.
@@ -54,6 +56,11 @@ Run `npm test` and `npm run typecheck` before you consider a task done. Add test
 - Keep `desktop/main.cjs` dependency-free (Electron + Node built-ins only) so `electron .` works without a build.
 - The renderer never gets Node access: `contextIsolation: true`, `sandbox: true`, and the only bridge is `desktop/preload.cjs`.
 - Test with `electron . --capture <dir>`: it saves PNGs of the door and shelf plus a WebGL snapshot and quits.
+
+## Publishing rules
+
+- Only `sanitizeForPublish` decides what is public. Anything new on `Repo` that could identify the machine (paths, dirty state, local-only names) must be stripped there and covered by `tests/server/publish.test.ts`.
+- `build:static` must keep `--base ./` so the site works under any Pages path.
 
 ## Good next tasks
 

@@ -58,6 +58,8 @@ export interface Repo {
   /** GitHub visibility when known (github books always, disk books after enrichment). */
   visibility: 'public' | 'private' | null;
   archived: boolean;
+  /** First commit (disk) or GitHub creation date. Drives the rewind animation. */
+  createdAt: string | null;
   branch: string | null;
   lastCommitAt: string | null;
   commitCount: number;

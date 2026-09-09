@@ -47,6 +47,8 @@ describe('scanShelf', () => {
     expect(alpha.owner).toBe('someone');
     expect(alpha.repoSlug).toBe('someone/alpha');
     expect(alpha.id).toBe(repoId(alpha.path));
+    expect(alpha.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(new Date(alpha.createdAt!).getTime()).toBeLessThanOrEqual(new Date(alpha.lastCommitAt!).getTime());
 
     const beta = repos.find((r) => r.name === 'beta')!;
     expect(beta.dirtyCount).toBe(1);
@@ -60,6 +62,7 @@ describe('scanShelf', () => {
     const empty = repos.find((r) => r.name === 'empty')!;
     expect(empty.commitCount).toBe(0);
     expect(empty.lastCommitAt).toBeNull();
+    expect(empty.createdAt).toBeNull();
     expect(empty.error).toBeUndefined();
   });
 

@@ -2,8 +2,8 @@ import type { Repo } from './types';
 
 export const MIN_HEIGHT = 1.6;
 export const MAX_HEIGHT = 3.4;
-export const MIN_THICKNESS = 0.16;
-export const MAX_THICKNESS = 0.62;
+export const MIN_THICKNESS = 0.24;
+export const MAX_THICKNESS = 0.8;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 

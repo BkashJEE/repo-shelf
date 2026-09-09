@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useShelf, selectVisibleRepos, isFiltering } from '../store';
 import { languageCounts, type Filter } from '../derive';
+import { staticData } from '../static';
 
 export function Controls() {
   const query = useShelf((s) => s.query);
@@ -49,8 +50,8 @@ export function Controls() {
       <div className="hero">
         <div>
           <div className="eyebrow">A COLLECTION, ONE REPO AT A TIME</div>
-          <h1>The repo shelf.</h1>
-          <p className="sub">Click any book to take a closer look. Drag a book to another shelf to move the repo.</p>
+          <h1>{staticData()?.title ?? 'The repo shelf.'}</h1>
+          <p className="sub">{staticData() ? 'Click any book to take a closer look. Drag the wood to orbit, scroll for shelves.' : 'Click any book to take a closer look. Drag a book to another shelf to move the repo.'}</p>
         </div>
         <div className="hero-stats">
           <div>

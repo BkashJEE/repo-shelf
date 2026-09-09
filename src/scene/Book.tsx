@@ -20,6 +20,15 @@ interface Props {
 const tmpV = new THREE.Vector3();
 const tmpDir = new THREE.Vector3();
 const DRAG_PLANE_Z = 2.4;
+
+/** Small, stable per-book offsets so a row reads as hand-shelved, not extruded. */
+function jitterFor(id: string): { z: number; lean: number } {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  const a = ((h >>> 0) % 1000) / 1000;
+  const b = (((h >>> 8) >>> 0) % 1000) / 1000;
+  return { z: -0.02 - a * 0.1, lean: (b - 0.5) * 0.03 };
+}
 /** Thickness of the front cover board. The rest of the width is the page block. */
 const COVER_T = 0.05;
 /** How far the cover swings when the book opens (radians, just short of flat). */
@@ -54,6 +63,8 @@ export function Book({ repo, x, y, width, height, plankY }: Props) {
   const activeShelfId = useShelf((s) => s.activeShelfId);
   const shelfCount = useShelf((s) => s.shelves.length);
   const shelves = useShelf((s) => s.shelves);
+  const timeline = useShelf((s) => s.timeline);
+  const unborn = timeline !== null && (repo.createdAt ? new Date(repo.createdAt).getTime() > timeline : true);
   const dimmed = !matches(repo, query, filter, activeShelfId, staleDays);
   const reducedMotion = useMemo(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -145,6 +156,7 @@ export function Book({ repo, x, y, width, height, plankY }: Props) {
     const h = hinge.current;
     if (!g || !h || !mats) return;
     const t = target.current;
+    const jitter = jitterFor(repo.id);
     const c = current.current;
 
     if (dragging) {
@@ -174,7 +186,13 @@ export function Book({ repo, x, y, width, height, plankY }: Props) {
       t.x = x;
       t.y = y;
       t.scale = 1;
-      if (selected) {
+      if (unborn) {
+        t.z = -0.3;
+        t.rot = 0;
+        t.open = 0;
+        t.opacity = 0;
+        t.scale = 0.01;
+      } else if (selected) {
         // Pull the book out, turn its cover to the camera, and swing the cover open.
         t.z = 1.35;
         t.rot = -Math.PI / 2;
@@ -191,16 +209,17 @@ export function Book({ repo, x, y, width, height, plankY }: Props) {
         t.open = 0;
         t.opacity = 1;
       } else {
-        t.z = 0;
+        t.z = jitter.z;
         t.rot = 0;
         t.open = 0;
         t.opacity = anySelected ? 0.8 : 1;
       }
     }
 
-    const k = reducedMotion ? 1 : 1 - Math.exp(-delta * (dragging ? 22 : 9));
+    const instant = useShelf.getState().instant;
+    const k = reducedMotion || instant ? 1 : 1 - Math.exp(-delta * (dragging ? 22 : timeline !== null ? 14 : 9));
     // The cover opens a beat after the book has turned, and closes before it turns back.
-    const kOpen = reducedMotion ? 1 : 1 - Math.exp(-delta * (t.open !== 0 && Math.abs(t.rot - c.rot) > 0.35 ? 2.5 : 6));
+    const kOpen = reducedMotion || instant ? 1 : 1 - Math.exp(-delta * (t.open !== 0 && Math.abs(t.rot - c.rot) > 0.35 ? 2.5 : 6));
     c.x += (t.x - c.x) * k;
     c.y += (t.y - c.y) * k;
     c.z += (t.z - c.z) * k;
@@ -211,6 +230,8 @@ export function Book({ repo, x, y, width, height, plankY }: Props) {
 
     g.position.set(c.x, c.y, c.z);
     g.rotation.y = c.rot;
+    // resting books lean a hair; anything pulled out, selected or dragged stands straight
+    g.rotation.z = selected || dragging || hovered ? 0 : jitter.lean;
     g.scale.setScalar(c.scale);
     h.rotation.y = c.open;
     for (const m of mats.all) m.opacity = c.opacity;
@@ -228,7 +249,7 @@ export function Book({ repo, x, y, width, height, plankY }: Props) {
 
   useEffect(() => {
     invalidate();
-  }, [hovered, selected, dimmed, dragging, anySelected, anyDragging, x, y, invalidate]);
+  }, [hovered, selected, dimmed, dragging, anySelected, anyDragging, x, y, unborn, invalidate]);
 
   useEffect(() => {
     document.body.style.cursor = dragging ? 'grabbing' : hovered ? 'pointer' : '';

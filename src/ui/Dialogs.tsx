@@ -463,6 +463,100 @@ function CreateRepoDialog() {
   );
 }
 
+function PublishDialog() {
+  const close = useShelf((s) => s.closeDialog);
+  const busy = useShelf((s) => s.busy);
+  const runAction = useShelf((s) => s.runAction);
+  const githubAvailable = useShelf((s) => s.githubAvailable);
+  const githubLogin = useShelf((s) => s.githubLogin);
+  const repos = useShelf((s) => s.repos);
+  const toast = useShelf((s) => s.toast);
+  const [name, setName] = useState('my-repo-shelf');
+  const [includePages, setIncludePages] = useState(true);
+  const [done, setDone] = useState<{ pagesUrl: string; repoUrl: string; repos: number; created: boolean } | null>(null);
+  const publicCount = repos.filter((r) => r.visibility === 'public' && !r.archived && (r.virtual || r.repoSlug)).length + repos.filter((r) => r.virtual && !r.repoSlug).length;
+  const ok = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(name) && githubAvailable && publicCount > 0;
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!ok) return;
+    try {
+      await runAction('Published your shelf', async () => {
+        const r = await api.publish(name, includePages);
+        setDone(r);
+        return {};
+      });
+    } catch {
+      /* toast */
+    }
+  };
+  const exportOnly = async () => {
+    try {
+      await runAction('Exported the site folder', async () => {
+        const r = await api.exportSite(includePages);
+        toast('info', `${r.repos} repos → ${r.dir}`);
+        return {};
+      });
+    } catch {
+      /* toast */
+    }
+  };
+
+  return (
+    <Modal title="Publish my shelf" onClose={close}>
+      {done ? (
+        <div>
+          <p className="modal-lead">
+            Your shelf is live{done.created ? '' : ' (updated)'}. GitHub Pages takes a minute the first time.
+          </p>
+          <p>
+            <a className="btn primary" href={done.pagesUrl} target="_blank" rel="noopener">
+              {done.pagesUrl}
+            </a>
+          </p>
+          <p className="modal-note">
+            {done.repos} public repos. Source repo: <a href={done.repoUrl} target="_blank" rel="noopener">{done.repoUrl}</a>. Re-publish any time to refresh it; the same link stays.
+          </p>
+          <div className="modal-actions">
+            <button className="btn" onClick={() => navigator.clipboard?.writeText(done.pagesUrl).then(() => toast('info', 'Link copied'))}>
+              Copy link
+            </button>
+            <button className="btn primary" onClick={close}>
+              Done
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={submit}>
+          <p className="modal-lead">
+            Turn your <b>{publicCount}</b> public repos into a 3D library site anyone can browse. Private repos, local-only repos, hidden shelves and file paths never leave this machine.
+          </p>
+          <label className="lbl">Repository name on GitHub</label>
+          <input className="field" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} spellCheck={false} />
+          <p className="modal-note">
+            Creates (or updates) <code>{githubLogin ?? 'you'}/{name || '…'}</code> as a public repo with GitHub Pages on. Your link: <code>https://{(githubLogin ?? 'you').toLowerCase()}.github.io/{name || '…'}/</code>
+          </p>
+          <label className="check">
+            <input type="checkbox" checked={includePages} onChange={(e) => setIncludePages(e.target.checked)} disabled={busy} /> Include README, commits and files for each book (slower, richer)
+          </label>
+          {!githubAvailable && <p className="modal-warn">GitHub CLI is not signed in. Run <code>gh auth login</code>, or export the folder and host it yourself.</p>}
+          <div className="modal-actions">
+            <button type="button" className="btn" onClick={close} disabled={busy}>
+              Cancel
+            </button>
+            <button type="button" className="btn" onClick={exportOnly} disabled={busy || publicCount === 0}>
+              Export folder only
+            </button>
+            <button type="submit" className="btn primary" disabled={!ok || busy}>
+              {busy ? 'Publishing…' : 'Publish to GitHub Pages'}
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
 export function Dialogs() {
   const kind = useShelf((s) => s.dialog?.kind ?? null);
   if (kind === 'move') return <MoveDialog />;
@@ -471,6 +565,7 @@ export function Dialogs() {
   if (kind === 'shelves') return <ShelvesDialog />;
   if (kind === 'clone') return <CloneDialog />;
   if (kind === 'create') return <CreateRepoDialog />;
+  if (kind === 'publish') return <PublishDialog />;
   if (kind === 'visibility') return <VisibilityDialog />;
   if (kind === 'delete') return <DeleteDialog />;
   return null;

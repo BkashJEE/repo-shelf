@@ -2,6 +2,8 @@ import { useShelf } from '../store';
 import { api } from '../api';
 import { ThemePicker } from './ThemePicker';
 import { WindowControls } from './WindowControls';
+import { ShareMenu } from './ShareMenu';
+import { isStaticSite, staticData } from '../static';
 
 export function Header() {
   const repos = useShelf((s) => s.repos.length);
@@ -29,6 +31,13 @@ export function Header() {
         <span className="wordmark">repo shelf.</span>
       </div>
       <nav className="hdr-nav">
+        {isStaticSite() && (
+          <a className="status muted" href={staticData()!.sourceUrl} target="_blank" rel="noopener" title="Get your own repo shelf">
+            published {new Date(staticData()!.generatedAt).toLocaleDateString()} · get yours ↗
+          </a>
+        )}
+        {!isStaticSite() && (
+          <>
         <span className={`status ${loaded && connected ? 'ok' : 'warn'}`} title={connected ? 'Live updates connected' : 'Reconnecting to server'}>
           <i />
           {loaded ? (connected ? 'Live' : 'Reconnecting…') : 'Loading…'}
@@ -36,9 +45,12 @@ export function Header() {
         <span className="status muted" title={githubAvailable ? `GitHub metadata via gh as ${githubLogin}` : 'GitHub data unavailable: run gh auth login'}>
           {githubAvailable ? 'GitHub · connected' : 'GitHub data unavailable'}
         </span>
-        <button className="btn small primary" onClick={() => openDialog({ kind: 'create' })} title="git init a new repo on one of your shelves">
-          + New repo
-        </button>
+        {!isStaticSite() && (
+          <button className="btn small primary" onClick={() => openDialog({ kind: 'create' })} title="git init a new repo on one of your shelves">
+            + New repo
+          </button>
+        )}
+        <ShareMenu />
         <ThemePicker />
         <button className="link" onClick={rescan}>
           Rescan
@@ -46,6 +58,8 @@ export function Header() {
         <button className="link" onClick={() => openDialog({ kind: 'shelves' })}>
           Shelves
         </button>
+          </>
+        )}
         <span className="hdr-stat">
           <b>{repos}</b> repos
         </span>

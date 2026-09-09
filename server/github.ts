@@ -44,13 +44,14 @@ export interface GhListItem {
   primaryLanguage: { name: string } | null;
   stargazerCount: number;
   pushedAt: string;
+  createdAt?: string;
   url: string;
   repositoryTopics: { name: string }[] | null;
   diskUsage: number | null;
 }
 
 export const LIST_FIELDS =
-  'nameWithOwner,name,visibility,isArchived,isFork,description,primaryLanguage,stargazerCount,pushedAt,url,repositoryTopics,diskUsage';
+  'nameWithOwner,name,visibility,isArchived,isFork,description,primaryLanguage,stargazerCount,pushedAt,createdAt,url,repositoryTopics,diskUsage';
 
 const LIST_TTL_MS = 10 * 60 * 1000;
 

@@ -43,6 +43,7 @@ export async function scanRepo(dir: string, shelf: string, runner: Runner = exec
     linkUrl: null,
     visibility: null,
     archived: false,
+    createdAt: null,
     branch: null,
     lastCommitAt: null,
     commitCount: 0,
@@ -55,9 +56,10 @@ export async function scanRepo(dir: string, shelf: string, runner: Runner = exec
     github: null,
   };
   try {
-    const [branch, lastCommit, count, status, remote, walk] = await Promise.all([
+    const [branch, lastCommit, firstCommits, count, status, remote, walk] = await Promise.all([
       git(runner, dir, ['rev-parse', '--abbrev-ref', 'HEAD']),
       git(runner, dir, ['log', '-1', '--format=%cI']),
+      git(runner, dir, ['log', '--reverse', '--format=%cI', '--max-count=100000']),
       git(runner, dir, ['rev-list', '--count', 'HEAD']),
       git(runner, dir, ['status', '--porcelain']),
       git(runner, dir, ['remote', 'get-url', 'origin']),
@@ -69,6 +71,7 @@ export async function scanRepo(dir: string, shelf: string, runner: Runner = exec
     }
     base.branch = branch && branch !== 'HEAD' ? branch : branch;
     base.lastCommitAt = lastCommit || null;
+    base.createdAt = firstCommits ? firstCommits.split(/\r?\n/)[0]?.trim() || null : null;
     base.commitCount = count ? Number.parseInt(count, 10) || 0 : 0;
     base.dirtyCount = status ? status.split(/\r?\n/).filter((l) => l.trim()).length : 0;
     base.remoteUrl = remote || null;
@@ -119,6 +122,7 @@ export function linkRepo(link: LinkEntry, shelf: string): Repo {
     linkUrl: url,
     visibility: null,
     archived: false,
+    createdAt: null,
     branch: null,
     lastCommitAt: null,
     commitCount: 0,
@@ -147,6 +151,7 @@ export function githubRepo(item: GhListItem, shelf: string, now: Date = new Date
     visibility: vis,
     archived: Boolean(item.isArchived),
     branch: null,
+    createdAt: item.createdAt ?? null,
     lastCommitAt: item.pushedAt ?? null,
     commitCount: 0,
     dirtyCount: 0,

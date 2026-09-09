@@ -3,8 +3,9 @@ import type { AppState, Repo, RepoPages, Shelf } from './types';
 import { api, ApiError, subscribeEvents } from './api';
 import { matches, type Filter } from './derive';
 import { applyThemeCss, loadThemeId, saveThemeId, themeById } from './themes';
+import { staticData, staticState } from './static';
 
-export type DialogKind = 'move' | 'rename' | 'mkdir' | 'shelves' | 'clone' | 'visibility' | 'delete' | 'create';
+export type DialogKind = 'move' | 'rename' | 'mkdir' | 'shelves' | 'clone' | 'visibility' | 'delete' | 'create' | 'publish';
 
 export interface Dialog {
   kind: DialogKind;
@@ -67,6 +68,15 @@ export interface ShelfState {
   themeId: string;
   pages: Record<string, RepoPages>;
   setPages: (repoId: string, pages: RepoPages) => void;
+  /** Rewind: books created after this instant are hidden. null = off. */
+  timeline: number | null;
+  rewindPlaying: boolean;
+  setTimeline: (t: number | null) => void;
+  startRewind: () => void;
+  readOnly: boolean;
+  /** When true every eased animation snaps to its target (used while exporting frames). */
+  instant: boolean;
+  setInstant: (v: boolean) => void;
 
   load: () => Promise<void>;
   applyState: (s: AppState) => void;
@@ -139,8 +149,21 @@ export const useShelf = create<ShelfState>()((set, get) => ({
   themeId: loadThemeId(),
   pages: {},
   setPages: (repoId, pages) => set((st) => ({ pages: { ...st.pages, [repoId]: pages } })),
+  timeline: null,
+  rewindPlaying: false,
+  setTimeline: (timeline) => set({ timeline }),
+  startRewind: () => set({ rewindPlaying: true, selectedRepoId: null, timeline: 0 }),
+  readOnly: staticData() !== null,
+  instant: false,
+  setInstant: (instant) => set({ instant }),
 
   async load() {
+    const embedded = staticData();
+    if (embedded) {
+      get().applyState(staticState(embedded));
+      set({ loaded: true, loadError: null, connected: true, pages: embedded.pages, readOnly: true });
+      return;
+    }
     try {
       const s = await api.state();
       get().applyState(s);
@@ -152,7 +175,7 @@ export const useShelf = create<ShelfState>()((set, get) => ({
 
   applyState(s) {
     const selected = get().selectedRepoId;
-    set({ pages: {} });
+    if (!staticData()) set({ pages: {} });
     const visible = s.shelves.filter((sh) => !sh.hidden || get().secretRevealed);
     set({
       allShelves: s.shelves,
@@ -293,6 +316,7 @@ export function connectStore(): () => void {
   const st = useShelf.getState();
   applyThemeCss(themeById(st.themeId));
   void st.load();
+  if (staticData()) return () => undefined;
   return subscribeEvents({
     onRepoUpdate: (r) => useShelf.getState().mergeRepo(r),
     onStateChanged: () => void useShelf.getState().load(),

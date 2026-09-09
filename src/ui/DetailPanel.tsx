@@ -16,6 +16,7 @@ export function DetailPanel() {
   const visible = useShelf(useShallow(selectVisibleRepos));
   const dialogOpen = useShelf((s) => s.dialog !== null);
   const githubLogin = useShelf((s) => s.githubLogin);
+  const readOnly = useShelf((s) => s.readOnly);
   const [chapter, setChapter] = useState<Chapter>('readme');
 
   useEffect(() => {
@@ -153,7 +154,15 @@ export function DetailPanel() {
             </dl>
           )}
 
-          {repo.virtual ? (
+          {readOnly ? (
+            <div className="btn-row">
+              {(repo.linkUrl || repo.repoSlug) && (
+                <a className="btn primary" href={repo.linkUrl ?? `https://github.com/${repo.repoSlug}`} target="_blank" rel="noopener">
+                  {repo.repoSlug ? 'View on GitHub ↗' : 'Open link ↗'}
+                </a>
+              )}
+            </div>
+          ) : repo.virtual ? (
             <div className="btn-row">
               <button className="btn primary" onClick={() => open('github')}>
                 {repo.repoSlug ? 'View on GitHub ↗' : 'Open link ↗'}
@@ -196,7 +205,7 @@ export function DetailPanel() {
             </>
           )}
 
-          {repo.virtual && repo.repoSlug && (
+          {!readOnly && repo.virtual && repo.repoSlug && (
             <div className="gh-manage">
               <div className="lbl">Manage on GitHub</div>
               {ownsIt ? (

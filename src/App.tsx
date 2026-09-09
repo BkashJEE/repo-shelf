@@ -7,6 +7,8 @@ import { DetailPanel } from './ui/DetailPanel';
 import { Dialogs } from './ui/Dialogs';
 import { Toasts } from './ui/Toasts';
 import { ViewControls } from './ui/ViewControls';
+import { RewindOverlay } from './ui/Rewind';
+import { staticData } from './static';
 
 export function App() {
   const loaded = useShelf((s) => s.loaded);
@@ -17,6 +19,10 @@ export function App() {
   const hasSelection = useShelf((s) => s.selectedRepoId !== null);
 
   useEffect(() => connectStore(), []);
+  useEffect(() => {
+    const d = staticData();
+    if (d) document.title = d.title;
+  }, []);
 
   // Easter egg: typing "hermes" anywhere (outside inputs) reveals the hidden shelf.
   useEffect(() => {
@@ -58,6 +64,7 @@ export function App() {
           <div className="scene-wrap">
             <Scene />
             <ViewControls />
+            <RewindOverlay />
           </div>
         )}
         <DetailPanel />

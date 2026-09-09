@@ -1415,3 +1415,51 @@ code {
   background: var(--red);
   color: #fff;
 }
+
+/* Share menu + rewind */
+.share-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.share-list {
+  width: 340px;
+}
+.share-job {
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.rewind {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 15;
+  animation: fade 0.3s;
+}
+.rewind-year {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: 84px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  text-shadow: 0 2px 12px color-mix(in srgb, var(--page) 70%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.rewind-count {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+a.btn {
+  text-decoration: none;
+  display: inline-block;
+}
+a.status {
+  text-decoration: none;
+}

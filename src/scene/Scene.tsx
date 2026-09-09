@@ -7,15 +7,22 @@ import { themeById } from '../themes';
 
 /** Exposes the renderer for the desktop widget's self-check and for debugging (window.__r3f). */
 function SceneDebug() {
+  const advance = useThree((st) => st.advance);
+  const invalidate = useThree((st) => st.invalidate);
   const { gl, scene, camera } = useThree();
   useEffect(() => {
     (window as unknown as { __r3f?: unknown }).__r3f = {
+      gl,
+      scene,
+      camera,
+      advance,
+      invalidate,
       snapshot: () => {
         gl.render(scene, camera);
         return gl.domElement.toDataURL('image/png');
       },
     };
-  }, [gl, scene, camera]);
+  }, [gl, scene, camera, advance, invalidate]);
   return null;
 }
 

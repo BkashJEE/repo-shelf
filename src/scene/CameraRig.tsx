@@ -139,6 +139,8 @@ export function CameraRig() {
   }, [scrollRow, size, shelfCount, zoom, orbit, focus, invalidate]);
 
   useFrame((state, delta) => {
+    // Live values: exports drive the store synchronously and render before React re-renders this component.
+    const { zoom, orbit, focus, scrollRow } = useShelf.getState();
     const cam = camera as THREE.PerspectiveCamera;
     if (cam.fov !== FOV) {
       cam.fov = FOV;
@@ -172,7 +174,7 @@ export function CameraRig() {
     const targetPitch = THREE.MathUtils.clamp(orbit.pitch, PITCH_MIN, PITCH_MAX) + state.pointer.y * 0.03 + 0.05;
 
     const c = cur.current;
-    const k = 1 - Math.exp(-delta * 7);
+    const k = useShelf.getState().instant ? 1 : 1 - Math.exp(-delta * 7);
     c.x += (targetX - c.x) * k;
     c.y += (targetY - c.y) * k;
     c.dist += (targetDist - c.dist) * k;

@@ -22,11 +22,16 @@ import {
 } from './actions.js';
 import { appendAudit } from './audit.js';
 import { PagesCache, buildPages } from './pages.js';
+import { buildStaticSite, publishSite } from './publish.js';
 import { EventHub } from './events.js';
 
 export interface AppDeps {
   configFile: string;
   cacheDir: string;
+  /** `vite build --base ./` output used for published sites. */
+  staticDist?: string;
+  /** Where shelfies and GIFs are saved. */
+  exportsDir?: string;
   runner?: Runner;
   enricher?: GitHubEnricher;
   spawn?: Spawner;
@@ -128,7 +133,7 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
   const app = express();
   app.disable('x-powered-by');
   app.use(loopbackOnly);
-  app.use(express.json({ limit: '64kb' }));
+  app.use(express.json({ limit: '40mb' })); // share/save carries GIFs as base64
 
   const api = express.Router();
 
@@ -371,6 +376,67 @@ export async function createApp(deps: AppDeps): Promise<AppHandle> {
       if (github) await refreshGithubShelves();
       hub.broadcast('state:changed', { reason: 'create' });
       res.json({ ok: true, newPath: result.path, url: result.url, warning: result.warning ?? null, state: state() });
+    }),
+  );
+
+  const exportsDir = deps.exportsDir ?? path.join(deps.cacheDir, 'exports');
+  const staticDist = deps.staticDist ?? path.join(path.dirname(deps.cacheDir), 'dist-static');
+  const pagesFor = (repo: Repo) => pagesCache.get(repo, () => buildPages(repo, runner, enricher.available()));
+
+  api.post(
+    '/export',
+    wrap(async (req, res) => {
+      const includePages = req.body?.includePages !== false;
+      const outDir = path.join(exportsDir, 'shelf-site');
+      const r = await buildStaticSite(state(), { staticDist, outDir, owner: enricher.login(), pagesFor: includePages ? pagesFor : undefined });
+      await appendAudit(auditFile, { action: 'export', repoId: '-', path: outDir, params: { includePages }, ok: true });
+      res.json({ ok: true, ...r });
+    }),
+  );
+
+  api.post(
+    '/publish',
+    wrap(async (req, res) => {
+      const repoName = typeof req.body?.repoName === 'string' ? req.body.repoName.trim() : '';
+      const includePages = req.body?.includePages !== false;
+      const outDir = path.join(exportsDir, 'published', repoName || 'shelf');
+      let result;
+      try {
+        const built = await buildStaticSite(state(), { staticDist, outDir, owner: enricher.login(), pagesFor: includePages ? pagesFor : undefined });
+        result = { ...built, ...(await publishSite(outDir, enricher.login(), repoName, runner)) };
+        await appendAudit(auditFile, { action: 'publish', repoId: '-', path: outDir, params: { repoName, includePages }, ok: true });
+      } catch (err) {
+        await appendAudit(auditFile, { action: 'publish', repoId: '-', path: outDir, params: { repoName }, ok: false, error: err instanceof Error ? err.message : String(err) });
+        throw err;
+      }
+      res.json({ ok: true, ...result });
+    }),
+  );
+
+  api.post(
+    '/share/save',
+    wrap(async (req, res) => {
+      const name = typeof req.body?.name === 'string' ? req.body.name : '';
+      const dataUrl = typeof req.body?.dataUrl === 'string' ? req.body.dataUrl : '';
+      if (!/^[A-Za-z0-9._-]{1,120}\.(png|gif|webm)$/.test(name)) throw new ActionError(400, 'bad_name', 'Bad file name.');
+      const m = /^data:(image\/png|image\/gif|video\/webm);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+      if (!m) throw new ActionError(400, 'bad_data', 'Expected a base64 PNG, GIF or WebM data URL.');
+      await fs.promises.mkdir(exportsDir, { recursive: true });
+      const file = path.join(exportsDir, name);
+      await fs.promises.writeFile(file, Buffer.from(m[2], 'base64'));
+      res.json({ ok: true, file, dir: exportsDir });
+    }),
+  );
+
+  api.post(
+    '/share/open-folder',
+    wrap(async (_req, res) => {
+      await fs.promises.mkdir(exportsDir, { recursive: true });
+      const win = process.platform === 'win32';
+      const mac = process.platform === 'darwin';
+      const child = spawn(win ? 'explorer' : mac ? 'open' : 'xdg-open', [exportsDir], { detached: true, stdio: 'ignore', shell: win });
+      child.unref();
+      res.json({ ok: true, dir: exportsDir });
     }),
   );
 

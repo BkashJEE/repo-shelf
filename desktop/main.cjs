@@ -73,11 +73,13 @@ async function startServer() {
   console.log('[repo-shelf] starting server on port', serverPort);
   process.env.SHELF_PORT = String(serverPort);
   process.env.SHELF_ROOT = PROJECT_ROOT;
+  process.env.SHELF_STATIC_DIST = path.join(PROJECT_ROOT, 'dist-static');
   process.env.NODE_ENV = 'production';
   if (app.isPackaged) {
     // Writable, per-user locations once installed.
     process.env.SHELF_CONFIG = process.env.SHELF_CONFIG ?? userFile('shelf.config.json');
     process.env.SHELF_CACHE = process.env.SHELF_CACHE ?? userFile('cache');
+    process.env.SHELF_EXPORTS = process.env.SHELF_EXPORTS ?? path.join(app.getPath('pictures'), 'repo shelf');
   }
   const bundle = path.join(PROJECT_ROOT, 'dist', 'server.cjs');
   if (!fs.existsSync(bundle)) {
@@ -305,6 +307,32 @@ if (!single) {
           } else console.log('[repo-shelf] scene snapshot unavailable');
         } catch (err) {
           console.error('[repo-shelf] scene snapshot failed:', String(err));
+        }
+        // --capture-exports: also run every Share export (shelfie, orbit, rewind) and wait for the toasts.
+        if (process.argv.includes('--capture-exports')) {
+          const runShare = (label) =>
+            shelf.webContents.executeJavaScript(`(async () => {
+              document.querySelector('.share-menu button').click();
+              await new Promise((r) => setTimeout(r, 300));
+              const btn = [...document.querySelectorAll('.share-list .theme-opt')].find((b) => b.textContent.includes(${JSON.stringify(label)}));
+              if (!btn) return 'menu item missing';
+              btn.click();
+              let last = '';
+              for (let i = 0; i < 180; i++) {
+                await new Promise((r) => setTimeout(r, 1000));
+                const t = document.querySelector('.toasts')?.innerText;
+                if (t) last = t;
+                if (!document.querySelector('.share-job') && i > 2) break;
+              }
+              return last || 'finished without toast';
+            })()`);
+          for (const label of ['Shelfie', 'Orbit GIF', 'Rewind GIF']) {
+            try {
+              console.log('[repo-shelf] export', label, '->', await runShare(label));
+            } catch (err) {
+              console.error('[repo-shelf] export', label, 'failed:', String(err));
+            }
+          }
         }
         console.log('[repo-shelf] capture done');
         app.isQuitting = true;

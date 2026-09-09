@@ -1,4 +1,5 @@
 import type { AppState, OpenTarget, Repo, RepoPages } from './types';
+import { staticData } from './static';
 
 export class ApiError extends Error {
   constructor(
@@ -63,7 +64,19 @@ export const api = {
     post<ActionResponse>('/api/repo/visibility', { repoId, visibility }),
   setArchived: (repoId: string, archived: boolean) => post<ActionResponse>('/api/repo/archive', { repoId, archived }),
   deleteOnGitHub: (repoId: string, confirmName: string) => post<ActionResponse>('/api/repo/delete', { repoId, confirmName }),
-  pages: (repoId: string) => request<RepoPages>(`/api/repo/${encodeURIComponent(repoId)}/pages`),
+  pages: (repoId: string) => {
+    const s = staticData();
+    if (s) {
+      const p = s.pages[repoId];
+      return p ? Promise.resolve(p) : Promise.reject(new ApiError(404, 'no_pages', 'This published shelf has no pages for that repo.'));
+    }
+    return request<RepoPages>(`/api/repo/${encodeURIComponent(repoId)}/pages`);
+  },
+  saveShare: (name: string, dataUrl: string) => post<{ ok: true; file: string; dir: string }>('/api/share/save', { name, dataUrl }),
+  openExports: () => post<{ ok: true; dir: string }>('/api/share/open-folder', {}),
+  exportSite: (includePages: boolean) => post<{ ok: true; dir: string; repos: number; shelves: number; withPages: number }>('/api/export', { includePages }),
+  publish: (repoName: string, includePages: boolean) =>
+    post<{ ok: true; repoUrl: string; pagesUrl: string; created: boolean; repos: number; shelves: number; withPages: number }>('/api/publish', { repoName, includePages }),
   create: (shelfId: string, name: string, description: string, github: 'public' | 'private' | null) =>
     post<ActionResponse & { url: string | null; warning: string | null }>('/api/repo/create', { shelfId, name, description, github }),
   addShelf: (label: string, path: string) => post<AppState>('/api/shelves', { label, path }),

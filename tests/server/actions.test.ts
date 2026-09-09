@@ -258,6 +258,7 @@ describe('GitHub account actions', () => {
     linkUrl: 'https://github.com/me/thing',
     visibility: 'public',
     archived: false,
+    createdAt: null,
     branch: null,
     lastCommitAt: null,
     commitCount: 0,

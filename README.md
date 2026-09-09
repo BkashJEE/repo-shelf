@@ -16,6 +16,19 @@ Built with React Three Fiber, Express, and `gh`. Runs on your machine only. Wind
 | --- | --- | --- | --- |
 | ![open](docs/media/screenshot-open.png) | ![zoom out](docs/media/screenshot-zoom-out.png) | ![midnight](docs/media/screenshot-midnight.png) | ![mobile](docs/media/screenshot-mobile-open.png) |
 
+## Share it
+
+![orbit](docs/media/orbit.gif)
+
+The **Share** menu in the header:
+
+- **Shelfie (PNG)**: the current view with a caption bar (your name, repo count, top languages). 1600px, ready to post.
+- **Orbit GIF**: the camera sweeps around your bookcase in a 3-second loop.
+- **Rewind GIF**: every book lands on the shelves in the order you created the repos, with a year counter. Or play it on screen without exporting.
+- **Publish my shelf…**: one click turns your public repos into a standalone 3D library site on GitHub Pages, at `https://<you>.github.io/<name>/`. Visitors can browse the shelves, open books, and read the READMEs. Private repos, local-only repos, hidden shelves and file paths never leave your machine; the page carries a "get yours" link back here. Re-publish any time, the link stays. There is also **Export folder only** if you want to host it elsewhere.
+
+Exports land in `shelf-exports/` (or *Pictures/repo shelf* from the desktop widget).
+
 ## Desktop widget
 
 A small **library door** sits on your desktop (always on top, drag it anywhere). Click it: the doors swing open and the bookshelf window appears. Close the shelf and you are back at the door. Everything you do there is real: move, rename, create folders, create repos, clone, change visibility, all against your actual git folders and your GitHub account.

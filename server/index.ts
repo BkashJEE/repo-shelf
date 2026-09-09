@@ -25,6 +25,8 @@ const HOST = '127.0.0.1';
 const configFile = process.env.SHELF_CONFIG ?? path.join(projectRoot, 'shelf.config.json');
 const cacheDir = process.env.SHELF_CACHE ?? path.join(projectRoot, '.cache');
 const distDir = path.join(projectRoot, 'dist');
+const staticDist = process.env.SHELF_STATIC_DIST ?? path.join(projectRoot, 'dist-static');
+const exportsDir = process.env.SHELF_EXPORTS ?? path.join(projectRoot, 'shelf-exports');
 const serveStatic = process.env.NODE_ENV === 'production' || process.argv.includes('--serve');
 
 let handle: AppHandle | null = null;
@@ -36,6 +38,8 @@ async function main(): Promise<void> {
     handle = await createApp({
       configFile,
       cacheDir,
+      staticDist,
+      exportsDir,
       staticDir: serveStatic && fs.existsSync(distDir) ? distDir : undefined,
     });
   } catch (err) {
