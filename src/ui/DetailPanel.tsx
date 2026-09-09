@@ -3,8 +3,19 @@ import { useShallow } from 'zustand/react/shallow';
 import { useShelf, selectVisibleRepos } from '../store';
 import { api } from '../api';
 import { bookColor, displayName, formatSize, isStale, languageOf, relativeTime } from '../derive';
-import { BookPages, type Chapter } from './BookPages';
+import { BookPages, DocPages, type Chapter } from './BookPages';
 import type { OpenTarget } from '../types';
+
+function docSourceHref(doc: string): string {
+  const m = doc.match(/^([\w.-]+\/[\w.-]+):(.+)$/);
+  return m ? `https://github.com/${m[1]}/blob/HEAD/${m[2]}` : doc;
+}
+
+/** "getting-started · quickstart" from the guide's website URL. */
+function docPathLabel(repo: { linkUrl: string | null; name: string }): string {
+  const m = repo.linkUrl?.match(/\/docs\/(.+?)\/?$/);
+  return m ? m[1].split('/').join(' · ') : repo.name;
+}
 
 export function DetailPanel() {
   const repo = useShelf((s) => s.repos.find((r) => r.id === s.selectedRepoId) ?? null);
@@ -79,10 +90,12 @@ export function DetailPanel() {
             FROM SHELF {String(shelfIndex + 1).padStart(2, '0')} · {shelf?.label}
           </div>
           <div className="tags">
-            {repo.virtual && <span className="tag tag-muted">{repo.repoSlug ? 'On GitHub' : 'Link'}</span>}
-            <span className="tag" style={{ background: bookColor(lang) }}>
-              {lang}
-            </span>
+            {repo.virtual && <span className="tag tag-muted">{repo.doc ? 'Guide' : repo.repoSlug ? 'On GitHub' : 'Link'}</span>}
+            {!repo.doc && (
+              <span className="tag" style={{ background: bookColor(lang) }}>
+                {lang}
+              </span>
+            )}
             {repo.visibility === 'private' && <span className="tag tag-muted">🔒 Private</span>}
             {repo.visibility === 'public' && <span className="tag tag-muted">Public</span>}
             {repo.archived && <span className="tag tag-muted">Archived</span>}
@@ -92,9 +105,10 @@ export function DetailPanel() {
             {repo.error && <span className="tag tag-red">git error</span>}
           </div>
           <h2 className="panel-title">{displayName(repo.name)}</h2>
-          <div className="panel-slug">{repo.repoSlug ?? repo.name}</div>
+          <div className="panel-slug">{repo.doc ? docPathLabel(repo) : (repo.repoSlug ?? repo.name)}</div>
           <p className="panel-desc">
             {repo.github?.description ??
+              repo.summary ??
               (repo.virtual
                 ? 'Not on your disk yet. Open it, or clone it onto one of your shelves.'
                 : repo.repoSlug
@@ -106,7 +120,18 @@ export function DetailPanel() {
             {repo.virtual ? repo.linkUrl : repo.path}
           </button>
 
-          {repo.virtual ? (
+          {repo.doc ? (
+            <dl className="facts">
+              <div className="span2">
+                <dt>From</dt>
+                <dd>Hermes Agent documentation</dd>
+              </div>
+              <div>
+                <dt>Format</dt>
+                <dd>Guide, page by page</dd>
+              </div>
+            </dl>
+          ) : repo.virtual ? (
             <dl className="facts">
               <div>
                 <dt>Stars</dt>
@@ -165,8 +190,13 @@ export function DetailPanel() {
           ) : repo.virtual ? (
             <div className="btn-row">
               <button className="btn primary" onClick={() => open('github')}>
-                {repo.repoSlug ? 'View on GitHub ↗' : 'Open link ↗'}
+                {repo.doc ? 'Read on the website ↗' : repo.repoSlug ? 'View on GitHub ↗' : 'Open link ↗'}
               </button>
+              {repo.doc && (
+                <a className="btn" href={docSourceHref(repo.doc)} target="_blank" rel="noopener">
+                  Source ↗
+                </a>
+              )}
               {repo.remoteUrl && (
                 <button className="btn" onClick={() => openDialog({ kind: 'clone', repoId: repo.id })} disabled={!diskShelves.length}>
                   Clone to a shelf…
@@ -246,7 +276,7 @@ export function DetailPanel() {
           </footer>
         </section>
 
-        <BookPages key={repo.id} repo={repo} chapter={chapter} onChapter={setChapter} />
+        {repo.doc ? <DocPages key={repo.id} repo={repo} /> : <BookPages key={repo.id} repo={repo} chapter={chapter} onChapter={setChapter} />}
       </div>
     </aside>
   );

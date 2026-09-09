@@ -24,6 +24,8 @@ function repo(over: Partial<Repo>): Repo {
     visibility: null,
     archived: false,
     createdAt: null,
+    doc: null,
+    summary: null,
     branch: 'main',
     lastCommitAt: null,
     commitCount: 3,

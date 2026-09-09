@@ -158,3 +158,106 @@ export function BookPages({ repo, chapter, onChapter }: { repo: Repo; chapter: C
 }
 
 export type { RepoPages };
+
+interface DocSection {
+  title: string;
+  markdown: string;
+}
+
+/** Split a guide into book pages at its H2 headings. The part before the first H2 is the opening page. */
+export function splitSections(markdown: string, fallbackTitle: string): DocSection[] {
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+  const sections: DocSection[] = [];
+  let title = fallbackTitle;
+  let buf: string[] = [];
+  let inFence = false;
+  const flush = () => {
+    const body = buf.join('\n').trim();
+    if (body) sections.push({ title, markdown: body });
+    buf = [];
+  };
+  for (const line of lines) {
+    if (/^```/.test(line)) inFence = !inFence;
+    const h2 = !inFence && line.match(/^##\s+(.+)$/);
+    if (h2) {
+      flush();
+      title = h2[1].replace(/[#*`]/g, '').trim();
+      continue;
+    }
+    if (!inFence && /^#\s+/.test(line) && sections.length === 0 && buf.every((l) => !l.trim())) continue; // drop the H1, the cover has it
+    buf.push(line);
+  }
+  flush();
+  return sections.length ? sections : [{ title: fallbackTitle, markdown }];
+}
+
+/** A guide book: the doc's sections become pages you turn one at a time. */
+export function DocPages({ repo }: { repo: Repo }) {
+  const cached = useShelf((s) => s.pages[repo.id]);
+  const setPages = useShelf((s) => s.setPages);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    if (cached) return;
+    let alive = true;
+    setError(null);
+    api
+      .pages(repo.id)
+      .then((p) => alive && setPages(repo.id, p))
+      .catch((e: Error) => alive && setError(e.message));
+    return () => {
+      alive = false;
+    };
+  }, [repo.id, cached, setPages]);
+
+  const sections = useMemo(() => (cached?.readme ? splitSections(cached.readme, 'Overview') : []), [cached?.readme]);
+  const base = repo.linkUrl && /^https?:/.test(repo.linkUrl) ? repo.linkUrl.replace(/\/[^/]*$/, '') : null;
+  const current = sections[Math.min(page, Math.max(0, sections.length - 1))];
+  const html = useMemo(() => (current ? renderMarkdown(current.markdown, base) : ''), [current, base]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) setPage((p) => Math.min(sections.length - 1, p + 1));
+      if (e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) setPage((p) => Math.max(0, p - 1));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sections.length]);
+
+  return (
+    <div className="book-right">
+      <nav className="chapters doc-toc" aria-label="Sections">
+        {sections.map((s, i) => (
+          <button key={i} className={`chapter ${i === page ? 'on' : ''}`} onClick={() => setPage(i)} title={s.title}>
+            {s.title}
+          </button>
+        ))}
+      </nav>
+      <div className="page-body doc-page">
+        {error && <p className="modal-note bad">Could not load: {error}</p>}
+        {!cached && !error && <p className="page-empty">Turning the page…</p>}
+        {cached && !cached.readme && <p className="page-empty">This guide could not be fetched. Read it on the website instead.</p>}
+        {current && (
+          <>
+            <h2 className="doc-heading">{current.title}</h2>
+            <article className="readme" dangerouslySetInnerHTML={{ __html: html }} />
+          </>
+        )}
+      </div>
+      <footer className="page-foot">
+        <button className="nav" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page <= 0} aria-label="Previous page">
+          ‹
+        </button>
+        <span>
+          {sections.length ? `${page + 1} / ${sections.length}` : '–'} · from the Hermes Agent docs
+        </span>
+        <button className="nav" onClick={() => setPage((p) => Math.min(sections.length - 1, p + 1))} disabled={page >= sections.length - 1} aria-label="Next page">
+          ›
+        </button>
+      </footer>
+    </div>
+  );
+}

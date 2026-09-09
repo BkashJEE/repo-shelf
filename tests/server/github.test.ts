@@ -56,6 +56,8 @@ function repo(slug: string | null): Repo {
     visibility: null,
     archived: false,
     createdAt: null,
+    doc: null,
+    summary: null,
     remoteUrl: slug ? `https://github.com/${slug}.git` : null,
     owner: slug ? slug.split('/')[0] : null,
     repoSlug: slug,

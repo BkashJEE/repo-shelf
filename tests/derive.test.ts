@@ -37,6 +37,8 @@ function repo(over: Partial<Repo> = {}): Repo {
     commitCount: 10,
     dirtyCount: 0,
     sizeKB: 100,
+    doc: null,
+    summary: null,
     languageGuess: 'Python',
     remoteUrl: null,
     owner: null,

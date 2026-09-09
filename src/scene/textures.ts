@@ -25,7 +25,16 @@ function darken(hex: string, amount = 0.25): string {
   return `#${c.getHexString()}`;
 }
 
+const LEATHER = ['#5b2f23', '#3b4a3a', '#2f3f5a', '#6a4a1f', '#4a2f4a', '#2f5248'];
+
+function leatherFor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return LEATHER[h % LEATHER.length];
+}
+
 export function baseColor(r: Repo, staleDays: number): string {
+  if (r.doc) return leatherFor(r.name);
   const c = bookColor(languageOf(r));
   if (r.virtual) return c;
   return isStale(r, staleDays) ? desaturate(c) : c;
@@ -132,7 +141,7 @@ function drawSpine(r: Repo, staleDays: number): HTMLCanvasElement {
   ctx.shadowBlur = 0;
   ctx.font = `500 30px ${SANS}`;
   ctx.fillStyle = 'rgba(246,244,238,0.7)';
-  const foot = r.virtual ? (r.repoSlug ? (r.visibility === 'private' ? '🔒 PRIVATE' : 'PUBLIC  ↗') : 'LINK  ↗') : languageOf(r).toUpperCase();
+  const foot = r.doc ? 'GUIDE' : r.virtual ? (r.repoSlug ? (r.visibility === 'private' ? '🔒 PRIVATE' : 'PUBLIC  ↗') : 'LINK  ↗') : languageOf(r).toUpperCase();
   ctx.fillText(foot, 0, px / 2 + 32);
   if (r.archived) {
     ctx.font = `700 22px ${SANS}`;
@@ -182,7 +191,7 @@ function drawCover(r: Repo, staleDays: number): HTMLCanvasElement {
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(246,244,238,0.75)';
   ctx.font = `500 30px ${SANS}`;
-  ctx.fillText(r.virtual ? (r.repoSlug ? (r.visibility === 'private' ? '🔒 PRIVATE ON GITHUB' : 'PUBLIC ON GITHUB') : 'LINK  ↗') : languageOf(r).toUpperCase(), W / 2, 165);
+  ctx.fillText(r.doc ? 'HERMES AGENT · GUIDE' : r.virtual ? (r.repoSlug ? (r.visibility === 'private' ? '🔒 PRIVATE ON GITHUB' : 'PUBLIC ON GITHUB') : 'LINK  ↗') : languageOf(r).toUpperCase(), W / 2, 165);
 
   ctx.fillStyle = '#f6f4ee';
   ctx.textBaseline = 'top';
@@ -201,7 +210,7 @@ function drawCover(r: Repo, staleDays: number): HTMLCanvasElement {
     y += px * 1.15;
   }
 
-  const desc = r.github?.description ?? '';
+  const desc = r.github?.description ?? r.summary ?? '';
   if (desc) {
     ctx.font = `400 33px ${SANS}`;
     ctx.fillStyle = 'rgba(246,244,238,0.85)';
@@ -270,7 +279,7 @@ function drawPage(r: Repo): HTMLCanvasElement {
   ctx.fillStyle = '#7a7268';
   ctx.fillText((r.repoSlug ?? r.name).toUpperCase(), W / 2, y + 6);
   y += 44;
-  const desc = r.github?.description ?? '';
+  const desc = r.github?.description ?? r.summary ?? '';
   if (desc) {
     ctx.font = `400 19px ${SANS}`;
     ctx.fillStyle = '#3f3a34';

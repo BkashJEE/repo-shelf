@@ -112,8 +112,95 @@ interface GhReadme {
 }
 
 /** Everything the open book shows: README, files, commits, branches, issues, pull requests. */
-export async function buildPages(repo: Repo, runner: Runner = execRunner, ghOk = false): Promise<RepoPages> {
+export type Fetcher = (url: string) => Promise<{ ok: boolean; status: number; text: () => Promise<string> }>;
+
+/** Turn a LinkEntry.doc reference into a raw URL. */
+export function docRawUrl(doc: string): string {
+  const m = doc.match(/^([\w.-]+\/[\w.-]+):(.+)$/);
+  if (m) return `https://raw.githubusercontent.com/${m[1]}/HEAD/${m[2].replace(/^\/+/, '')}`;
+  return doc;
+}
+
+/** Where a human can read or edit the source. */
+export function docSourceUrl(doc: string): string {
+  const m = doc.match(/^([\w.-]+\/[\w.-]+):(.+)$/);
+  if (m) return `https://github.com/${m[1]}/blob/HEAD/${m[2].replace(/^\/+/, '')}`;
+  return doc;
+}
+
+export interface CleanDoc {
+  title: string | null;
+  description: string | null;
+  markdown: string;
+}
+
+/**
+ * Make Docusaurus / MDX markdown readable as plain markdown: front matter out,
+ * imports and JSX embeds out, admonitions turned into quotes.
+ */
+export function cleanDoc(raw: string): CleanDoc {
+  let text = raw.replace(/\r\n/g, '\n');
+  let title: string | null = null;
+  let description: string | null = null;
+  const fm = text.match(/^---\n([\s\S]*?)\n---\n/);
+  if (fm) {
+    for (const line of fm[1].split('\n')) {
+      const t = line.match(/^title:\s*(.+)$/);
+      const d = line.match(/^description:\s*(.+)$/);
+      if (t) title = t[1].trim().replace(/^["']|["']$/g, '');
+      if (d) description = d[1].trim().replace(/^["']|["']$/g, '');
+    }
+    text = text.slice(fm[0].length);
+  }
+  text = text
+    .replace(/^import\s.+$/gm, '')
+    .replace(/^export\s.+$/gm, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/g, '')
+    .replace(/<div[^>]*style=\{\{[\s\S]*?<\/div>/g, '')
+    .replace(/<\/?(Tabs|TabItem|details|summary)[^>]*>/g, '')
+    .replace(/^:::(\w+)\s*(.*)$/gm, (_m, kind: string, label: string) => `> **${(label || kind).trim()}**`)
+    .replace(/^:::\s*$/gm, '')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (!title) {
+    const h1 = text.match(/^#\s+(.+)$/m);
+    if (h1) title = h1[1].trim();
+  }
+  return { title, description, markdown: text };
+}
+
+async function fetchDoc(doc: string, fetcher: Fetcher): Promise<CleanDoc | null> {
+  try {
+    const r = await fetcher(docRawUrl(doc));
+    if (!r.ok) return null;
+    const raw = await r.text();
+    return cleanDoc(raw.slice(0, MAX_README));
+  } catch {
+    return null;
+  }
+}
+
+export async function buildPages(
+  repo: Repo,
+  runner: Runner = execRunner,
+  ghOk = false,
+  fetcher: Fetcher = (url) => fetch(url) as Promise<{ ok: boolean; status: number; text: () => Promise<string> }>,
+): Promise<RepoPages> {
   const now = new Date().toISOString();
+  if (repo.doc) {
+    const d = await fetchDoc(repo.doc, fetcher);
+    return {
+      readme: d ? d.markdown : null,
+      files: [],
+      commits: [],
+      branches: [],
+      issues: [],
+      pulls: [],
+      source: d ? 'doc' : 'none',
+      fetchedAt: now,
+    };
+  }
   if (!repo.virtual && repo.path) {
     const [readme, files, commits, branches, extras] = await Promise.all([
       diskReadme(repo.path),

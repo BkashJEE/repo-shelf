@@ -3,6 +3,10 @@ export interface LinkEntry {
   slug?: string; // "owner/name"
   url?: string; // any https URL, used when there is no slug
   name?: string; // display name override
+  /** Markdown source for a guide book: "owner/repo:path/to/file.md" (fetched raw) or an https URL to a .md file. */
+  doc?: string;
+  /** One-line blurb shown on the cover and the page. */
+  description?: string;
 }
 
 export interface ShelfConfigEntry {
@@ -60,6 +64,10 @@ export interface Repo {
   archived: boolean;
   /** First commit (disk) or GitHub creation date. Drives the rewind animation. */
   createdAt: string | null;
+  /** Guide books: where the markdown comes from (see LinkEntry.doc). */
+  doc: string | null;
+  /** Blurb for link / guide books that have no GitHub description. */
+  summary: string | null;
   branch: string | null;
   lastCommitAt: string | null;
   commitCount: number;
@@ -128,6 +136,6 @@ export interface RepoPages {
   branches: string[];
   issues: PageIssue[];
   pulls: PageIssue[];
-  source: 'disk' | 'github' | 'none';
+  source: 'disk' | 'github' | 'doc' | 'none';
   fetchedAt: string;
 }

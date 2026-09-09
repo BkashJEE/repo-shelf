@@ -118,6 +118,14 @@ describe('link shelves', () => {
   });
 });
 
+describe('guide books', () => {
+  it('link entries with a doc become leather-bound guides with a summary', () => {
+    const r = linkRepo({ name: 'Quickstart', url: 'https://example.com/docs/q', doc: 'o/r:website/docs/q.md', description: 'Zero to chat' }, 's');
+    expect(r).toMatchObject({ name: 'Quickstart', virtual: true, doc: 'o/r:website/docs/q.md', summary: 'Zero to chat', languageGuess: 'Guide', linkUrl: 'https://example.com/docs/q' });
+    expect(linkRepo({ slug: 'a/b' }, 's')).toMatchObject({ doc: null, summary: null });
+  });
+});
+
 describe('parseRemote', () => {
   it('parses https, https+.git, ssh, and rejects non-GitHub', () => {
     expect(parseRemote('https://github.com/o/r')).toEqual({ owner: 'o', repoSlug: 'o/r' });

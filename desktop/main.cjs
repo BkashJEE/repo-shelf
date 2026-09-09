@@ -308,6 +308,35 @@ if (!single) {
         } catch (err) {
           console.error('[repo-shelf] scene snapshot failed:', String(err));
         }
+        // --capture-open <book name>: open that book and screenshot the spread (proves the page content renders).
+        const openIdx = process.argv.indexOf('--capture-open');
+        if (openIdx > 0 && process.argv[openIdx + 1]) {
+          const name = process.argv[openIdx + 1];
+          try {
+            const info = await shelf.webContents.executeJavaScript(`(async () => {
+              const b = document.querySelector('#book-index button[data-book=${JSON.stringify(name)}]');
+              if (!b) return 'book not found: ' + ${JSON.stringify(name)};
+              b.click();
+              for (let i = 0; i < 100; i++) {
+                await new Promise((r) => setTimeout(r, 250));
+                if (document.querySelector('.readme')) break;
+              }
+              await new Promise((r) => setTimeout(r, 800));
+              return {
+                title: document.querySelector('.panel-title')?.innerText,
+                sections: [...document.querySelectorAll('.doc-toc .chapter')].map((c) => c.innerText),
+                heading: document.querySelector('.doc-heading')?.innerText,
+                excerpt: (document.querySelector('.readme')?.innerText || '').slice(0, 160),
+                foot: document.querySelector('.page-foot span')?.innerText,
+              };
+            })()`);
+            console.log('[repo-shelf] opened book', JSON.stringify(info));
+            await sleep(600);
+            await snap(shelf, 'desktop-book.png');
+          } catch (err) {
+            console.error('[repo-shelf] open book failed:', String(err));
+          }
+        }
         // --capture-exports: also run every Share export (shelfie, orbit, rewind) and wait for the toasts.
         if (process.argv.includes('--capture-exports')) {
           const runShare = (label) =>

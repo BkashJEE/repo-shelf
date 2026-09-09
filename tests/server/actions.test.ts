@@ -259,6 +259,8 @@ describe('GitHub account actions', () => {
     visibility: 'public',
     archived: false,
     createdAt: null,
+    doc: null,
+    summary: null,
     branch: null,
     lastCommitAt: null,
     commitCount: 0,

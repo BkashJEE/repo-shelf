@@ -108,6 +108,28 @@ Two shelves list every repo on your GitHub account, split into **GitHub · publi
 { "label": "Everything by octocat", "github": "octocat" }
 ```
 
+## Guide shelves: the Hermes Agent docs as books
+
+A shelf can hold **guides**: each book is one page of a documentation site, bound in leather. Open it and the doc's sections become pages you turn one at a time (`‹ ›`, PageUp/PageDown, Space), rendered inside the book. The default config ships **Hermes Agent · Docs** with the important parts of the [Hermes Agent documentation](https://hermes-agent.nousresearch.com/docs/) in reading order: Quickstart, Installation, Platform Support, Learning Path, CLI, Configuration, Models, Desktop, Bot Mode, Profiles, Tools, Skills, Memory, MCP, Personality, Voice, Messaging, Cron, Delegation, Security, Creating Skills, Plugins, Architecture, CLI Commands, Environment Variables, FAQ.
+
+The text is fetched straight from the docs' markdown source on GitHub (front matter, imports and embeds stripped, admonitions kept as quotes), cached for five minutes, and each book links to the page on the website and to its source. Guides are included when you publish your shelf.
+
+```json
+{
+  "label": "Hermes Agent · Docs",
+  "links": [
+    {
+      "name": "Quickstart",
+      "url": "https://hermes-agent.nousresearch.com/docs/getting-started/quickstart",
+      "doc": "NousResearch/hermes-agent:website/docs/getting-started/quickstart.md",
+      "description": "From install to your first conversation in under five minutes."
+    }
+  ]
+}
+```
+
+`doc` is `owner/repo:path/to/page.md` (fetched raw from GitHub) or any https URL to a markdown file.
+
 ## Link shelves and the secret shelf
 
 A shelf can hold links instead of folders. Each link is a GitHub repo (`slug`) or any https URL, shown as a book with a dotted outline. Open it, or clone it onto a real shelf. The default config ships a **Hermes Agent** shelf with a few genuinely useful public repos.

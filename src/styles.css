@@ -1463,3 +1463,19 @@ a.btn {
 a.status {
   text-decoration: none;
 }
+
+/* Guide books */
+.doc-toc {
+  max-height: 96px;
+  overflow: auto;
+}
+.doc-heading {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  margin: 6px 0 4px;
+}
+.doc-page .readme h2 {
+  font-size: 16px;
+}

@@ -1,6 +1,6 @@
 {
   "name": "repo-shelf",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Your git repos as books on a 3D bookshelf. Browse, search, move, rename, open.",
   "license": "MIT",

@@ -18,7 +18,7 @@ describe('defaultConfig', () => {
   it('has Developer, Documents, Home shelves under the given home, plus link shelves', () => {
     const cfg = defaultConfig(HOME);
     expect(cfg.shelves.slice(0, 3).map((s) => s.label)).toEqual(['Developer', 'Documents', 'Home']);
-    expect(cfg.shelves.filter(isLinkShelf).map((s) => s.label)).toEqual(['Hermes Agent', 'Secret · Hermes Skills']);
+    expect(cfg.shelves.filter(isLinkShelf).map((s) => s.label)).toEqual(['Hermes Agent · Docs', 'Hermes Agent', 'Secret · Hermes Skills']);
     expect(cfg.shelves.filter(isGithubShelf).map((s) => s.visibility)).toEqual(['public', 'private']);
     expect(cfg.shelves.find((s) => s.hidden)?.label).toBe('Secret · Hermes Skills');
     expect(cfg.shelves[0].path).toBe(path.join(HOME, 'Developer'));
@@ -36,7 +36,7 @@ describe('loadConfig', () => {
     const cfg = loadConfig(file, tmp);
     expect(fs.existsSync(file)).toBe(true);
     expect(cfg.shelves.filter((s) => s.path)).toHaveLength(3);
-    expect(JSON.parse(fs.readFileSync(file, 'utf8')).shelves).toHaveLength(7);
+    expect(JSON.parse(fs.readFileSync(file, 'utf8')).shelves).toHaveLength(8);
   });
 
   it('drops default shelves whose folder does not exist on first boot', () => {
